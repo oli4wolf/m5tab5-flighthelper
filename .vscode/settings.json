@@ -1,0 +1,19 @@
+{
+    "idf.espIdfPathWin": "C:\\Users\\u214033\\esp\\v5.5.1\\esp-idf",
+    "idf.toolsPathWin": "C:\\Users\\u214033\\.espressif",
+    "idf.pythonInstallPath": "C:\\Users\\u214033\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+    "files.associations": {
+        "array": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "format": "cpp",
+        "initializer_list": "cpp",
+        "span": "cpp",
+        "text_encoding": "cpp"
+    }
+}
