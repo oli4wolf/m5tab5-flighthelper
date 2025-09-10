@@ -12,24 +12,6 @@
 
 // External global variables from main.cpp
 // Function to draw a Jpeg image from SD card
-bool drawJpgFromSD(const char* filePath) {
-  if (!SD_MMC.begin()) {
-    ESP_LOGE("SD_CARD", "SD Card Mount Failed in drawJpegFromSD");
-    M5.Display.printf("SD Card Mount Failed\n");
-    return false;
-  }
-
-  File file = SD_MMC.open(filePath);
-  if (!file) {
-    ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePath);
-    return false;
-  }
-
-  M5.Display.drawJpgFile(SD_MMC, filePath, 0, 0); // Draw at (0,0)
-  file.close();
-  ESP_LOGI("SD_CARD", "Successfully drew Jpeg: %s", filePath);
-  return true;
-}
 extern SemaphoreHandle_t xGPSMutex;
 extern double globalLatitude;
 extern double globalLongitude;
@@ -40,9 +22,6 @@ extern int globalTileX;
 extern int globalTileY;
 extern int globalTileZ;
 extern const int TILE_SIZE;
-
-// External function from main.cpp
-extern bool drawJpgFromSD(const char* filePath);
 
 void drawImageMatrixTask(void *pvParameters)
 {
@@ -82,18 +61,48 @@ void drawImageMatrixTask(void *pvParameters)
         xSemaphoreGive(xPositionMutex);
       }
 
-      // Draw the image from SD card
-      char filePathBuffer[128];
-      sprintf(filePathBuffer, "/map/%d/%d/%d.jpeg", globalTileZ, globalTileX, globalTileY);
-      ESP_LOGI("drawImageMatrixTask", "Attempting to draw jpeg from path: %s", filePathBuffer);
-
       M5.Display.clear(TFT_BLACK);
-      if (!drawJpgFromSD(filePathBuffer))
+
+      // Calculate the top-left corner for the center tile to be displayed in the middle of the screen
+      int centerX = (M5.Display.width() - TILE_SIZE) / 2;
+      int centerY = (M5.Display.height() - TILE_SIZE) / 2;
+
+      // Iterate to draw a 3x3 matrix of tiles
+      for (int yOffset = -1; yOffset <= 1; ++yOffset)
       {
-        M5.Display.printf("Failed to draw image!\n");
-        ESP_LOGE("drawImageMatrixTask", "Failed to draw image from SD card.");
+        for (int xOffset = -1; xOffset <= 1; ++xOffset)
+        {
+          int tileToDrawX = globalTileX + xOffset;
+          int tileToDrawY = globalTileY + yOffset;
+
+          char filePathBuffer[128];
+          sprintf(filePathBuffer, "/map/%d/%d/%d.jpeg", globalTileZ, tileToDrawX, tileToDrawY);
+          ESP_LOGI("drawImageMatrixTask", "Attempting to draw jpeg from path: %s at offset (%d, %d)", filePathBuffer, xOffset, yOffset);
+
+          int drawX = centerX + (xOffset * TILE_SIZE);
+          int drawY = centerY + (yOffset * TILE_SIZE);
+
+          if (!SD_MMC.begin()) {
+            ESP_LOGE("SD_CARD", "SD Card Mount Failed in drawImageMatrixTask");
+            M5.Display.printf("SD Card Mount Failed\n");
+            // Handle error, maybe skip drawing this tile
+            continue;
+          }
+
+          File file = SD_MMC.open(filePathBuffer);
+          if (!file) {
+            ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePathBuffer);
+            // Handle error, maybe draw a placeholder or skip
+            file.close(); // Ensure file handle is closed even if open failed
+            continue;
+          }
+
+          M5.Display.drawJpgFile(SD_MMC, filePathBuffer, drawX, drawY);
+          file.close();
+          ESP_LOGI("SD_CARD", "Successfully drew Jpeg: %s at (%d, %d)", filePathBuffer, drawX, drawY);
+        }
       }
-      vTaskDelay(pdMS_TO_TICKS(5000)); // Display the image for 5 seconds
+      vTaskDelay(pdMS_TO_TICKS(2000)); // Display the image for 2 seconds
     }
     else
     {

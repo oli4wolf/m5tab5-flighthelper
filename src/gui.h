@@ -14,6 +14,7 @@ bool drawJpgFromSD(const char* filePath);
 }
 #endif
 
+extern const int TILE_SIZE;
 // Declarations for GUI-related functions will go here.
 
 #endif // GUI_H
