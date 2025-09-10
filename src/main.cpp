@@ -9,6 +9,7 @@
 #include "sensor_task.h"     // Include the new sensor task header
 #include "gps_task.h"        // Include the new GPS task header
 #include "tile_calculator.h" // Include the new tile calculator header
+#include "gui.h"             // Include the new GUI header
 
 // global variables (define variables to be used throughout the program)
 uint32_t count;
@@ -34,6 +35,8 @@ int globalTileX;
 int globalTileY;
 int globalTileZ;
 
+const int TILE_SIZE = 256; // Standard size for map tiles (e.g., OpenStreetMap)
+
 const int APP_CPU_NUM = 1; // Define the core number for the application CPU (ESP32 has two cores: PRO_CPU_NUM=0 and APP_CPU_NUM=1)
 
 // SD Card variables
@@ -45,24 +48,6 @@ const int SD_D2_PIN = 41;  // GPIO number for SD card D2
 const int SD_D3_PIN = 42;  // GPIO number for SD card D3 pin
 
 // Function to draw a Jpeg image from SD card
-bool drawJpgFromSD(const char* filePath) {
-  if (!SD_MMC.begin()) {
-    ESP_LOGE("SD_CARD", "SD Card Mount Failed in drawJpegFromSD");
-    M5.Display.printf("SD Card Mount Failed\n");
-    return false;
-  }
-
-  File file = SD_MMC.open(filePath);
-  if (!file) {
-    ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePath);
-    return false;
-  }
-
-  M5.Display.drawJpgFile(SD_MMC, filePath, 0, 0); // Draw at (0,0)
-  file.close();
-  ESP_LOGI("SD_CARD", "Successfully drew Jpeg: %s", filePath);
-  return true;
-}
 
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
@@ -98,6 +83,7 @@ void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
     file = root.openNextFile();
   }
 }
+
 
 // setup function is executed only once at startup.
 // This function mainly describes the initialization process.
@@ -155,6 +141,16 @@ void setup()
       1,             // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,          // Task handle
       APP_CPU_NUM);  // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
+
+  // Create and start the image drawing task
+  xTaskCreatePinnedToCore(
+      drawImageMatrixTask,   // Task function
+      "ImageMatrixTask", // Name of task
+      8192,             // Stack size (bytes)
+      NULL,             // Parameter to pass to function
+      1,                // Task priority (0 to configMAX_PRIORITIES - 1)
+      NULL,             // Task handle
+      APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
 }
 
 // loop function is executed repeatedly for as long as it is running.
@@ -220,21 +216,6 @@ void loop()
     }
   }
 
-  M5.Display.clear(TFT_BLACK);
-  M5.Display.setCursor(0, 0);
-
-
-  // Draw the image from SD card
-  char filePathBuffer[128]; // Buffer to hold the formatted file path
-  sprintf(filePathBuffer, "/map/%d/%d/%d.jpeg", globalTileZ, globalTileX, globalTileY);
-  ESP_LOGI("main.cpp", "Attempting to draw jpeg from path: %s", filePathBuffer);
-  if (!drawJpgFromSD(filePathBuffer)) {
-    M5.Display.printf("Failed to draw image!\n");
-    ESP_LOGE("main.cpp", "Failed to draw image from SD card.");
-  }
-  delay(3000); // Display the image for 3 seconds
-
-  M5.Display.clear(TFT_BLACK); // Clear again before displaying sensor data
   M5.Display.setCursor(0, 0);
   M5.Display.printf("Pressure: %.2f hPa\n", currentPressure);
   M5.Display.printf("Temperature: %.2f C\n", currentTemperature);
