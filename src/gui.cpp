@@ -33,6 +33,9 @@ void drawImageMatrixTask(void *pvParameters)
   double currentSpeed = 0;
   bool currentValid = false;
 
+  // 4x4 conceptual tile array to store file paths
+  char tilePaths[4][4][128];
+
   while (true)
   {
     // Acquire GPS data
@@ -61,6 +64,19 @@ void drawImageMatrixTask(void *pvParameters)
         xSemaphoreGive(xPositionMutex);
       }
 
+      // Calculate the top-left coordinates for the 4x4 conceptual grid
+      int conceptualGridStartX = globalTileX - 2;
+      int conceptualGridStartY = globalTileY - 2;
+
+      // Populate the 4x4 tilePaths array
+      for (int y = 0; y < 4; ++y) {
+        for (int x = 0; x < 4; ++x) {
+          int tileToLoadX = conceptualGridStartX + x;
+          int tileToLoadY = conceptualGridStartY + y;
+          sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", globalTileZ, tileToLoadX, tileToLoadY);
+        }
+      }
+
       M5.Display.clear(TFT_BLACK);
 
       // Calculate the top-left corner for the center tile to be displayed in the middle of the screen
@@ -68,16 +84,16 @@ void drawImageMatrixTask(void *pvParameters)
       int centerY = (M5.Display.height() - TILE_SIZE) / 2;
 
       // Iterate to draw a 3x3 matrix of tiles
+      // Iterate to draw the central 3x3 matrix of tiles from the 4x4 conceptual array
       for (int yOffset = -1; yOffset <= 1; ++yOffset)
       {
         for (int xOffset = -1; xOffset <= 1; ++xOffset)
         {
-          int tileToDrawX = globalTileX + xOffset;
-          int tileToDrawY = globalTileY + yOffset;
-
-          char filePathBuffer[128];
-          sprintf(filePathBuffer, "/map/%d/%d/%d.jpeg", globalTileZ, tileToDrawX, tileToDrawY);
-          ESP_LOGI("drawImageMatrixTask", "Attempting to draw jpeg from path: %s at offset (%d, %d)", filePathBuffer, xOffset, yOffset);
+          // The central 3x3 of the 4x4 array corresponds to indices [1][1] to [3][3]
+          // So, map yOffset -1, 0, 1 to array indices 1, 2, 3
+          // And xOffset -1, 0, 1 to array indices 1, 2, 3
+          const char* filePath = tilePaths[yOffset + 2][xOffset + 2];
+          ESP_LOGI("drawImageMatrixTask", "Attempting to draw jpeg from path: %s at offset (%d, %d)", filePath, xOffset, yOffset);
 
           int drawX = centerX + (xOffset * TILE_SIZE);
           int drawY = centerY + (yOffset * TILE_SIZE);
@@ -89,17 +105,17 @@ void drawImageMatrixTask(void *pvParameters)
             continue;
           }
 
-          File file = SD_MMC.open(filePathBuffer);
+          File file = SD_MMC.open(filePath);
           if (!file) {
-            ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePathBuffer);
+            ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePath);
             // Handle error, maybe draw a placeholder or skip
             file.close(); // Ensure file handle is closed even if open failed
             continue;
           }
 
-          M5.Display.drawJpgFile(SD_MMC, filePathBuffer, drawX, drawY);
+          M5.Display.drawJpgFile(SD_MMC, filePath, drawX, drawY);
           file.close();
-          ESP_LOGI("SD_CARD", "Successfully drew Jpeg: %s at (%d, %d)", filePathBuffer, drawX, drawY);
+          ESP_LOGI("SD_CARD", "Successfully drew Jpeg: %s at (%d, %d)", filePath, drawX, drawY);
         }
       }
       vTaskDelay(pdMS_TO_TICKS(2000)); // Display the image for 2 seconds
