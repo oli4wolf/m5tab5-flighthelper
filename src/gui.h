@@ -52,6 +52,7 @@ public:
 };
 
 extern LRUCache tileCache;
+extern M5Canvas screenBufferCanvas;
 
 #endif // __cplusplus
 

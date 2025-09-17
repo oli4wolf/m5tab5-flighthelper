@@ -25,7 +25,8 @@ extern int globalTileZ;
 extern const int TILE_SIZE;
 // Global LRU Cache instance (1MB)
 LRUCache tileCache(1 * 1024 * 1024); // 1MB cache
-M5Canvas tileCanvas(&M5.Display); // Declare M5Canvas globally
+M5Canvas tileCanvas(&M5.Display); // Declare M5Canvas globally for individual tile drawing
+M5Canvas screenBufferCanvas(&M5.Display); // Declare M5Canvas globally for full screen buffer
 
 // LRUCache class implementation
 LRUCache::LRUCache(size_t maxBytes) : currentSize(0), maxSize(maxBytes) {
@@ -164,7 +165,8 @@ void drawImageMatrixTask(void *pvParameters)
   // 5x5 conceptual tile array to store file paths
   char tilePaths[5][5][128];
 
-  tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas
+  tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
+  screenBufferCanvas.createSprite(M5.Display.width(), M5.Display.height()); // Initialize M5Canvas for full screen buffer
 
   while (true)
   {
@@ -244,44 +246,42 @@ void drawImageMatrixTask(void *pvParameters)
       }
 
       if (redrawNeeded) {
-        M5.Display.clear(TFT_BLACK); // Clear only if full redraw is needed
+        screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
         ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
-      }
-
-      if (redrawNeeded) {
-        M5.Display.clear(TFT_BLACK); // Clear only if full redraw is needed
-        ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
-        // Draw all 25 tiles
+        // Draw all 25 tiles to the screen buffer
         for (int yOffset = -2; yOffset <= 2; ++yOffset) {
           for (int xOffset = -2; xOffset <= 2; ++xOffset) {
             int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
             int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-            tileCanvas.clear(); // Clear the canvas before drawing a new tile
+            tileCanvas.clear(); // Clear the individual tile canvas
             drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
                      globalTileZ, tilePaths[yOffset + 2][xOffset + 2]);
-            tileCanvas.pushSprite(currentDrawX, currentDrawY);
+            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
           }
         }
       } else if (deltaX != 0 || deltaY != 0) {
-        // Only draw newly exposed tiles after scrolling
-        // Determine which rows/columns are newly exposed
+        // Small shift, can scroll the screen buffer
+        screenBufferCanvas.scroll(deltaX, deltaY);
+        ESP_LOGI("drawImageMatrixTask", "Scrolling screen buffer by (%d, %d).", deltaX, deltaY);
+
+        // Only draw newly exposed tiles after scrolling onto the screen buffer
         if (deltaX > 0) { // Scrolled right, new tiles on left
           for (int yOffset = -2; yOffset <= 2; ++yOffset) {
             int currentDrawX = drawOriginX + (-2 * TILE_SIZE);
             int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-            tileCanvas.clear(); // Clear the canvas before drawing a new tile
+            tileCanvas.clear();
             drawTile(tileCanvas, conceptualGridStartX - 2, conceptualGridStartY + yOffset,
                      globalTileZ, tilePaths[yOffset + 2][0]);
-            tileCanvas.pushSprite(currentDrawX, currentDrawY);
+            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         } else if (deltaX < 0) { // Scrolled left, new tiles on right
           for (int yOffset = -2; yOffset <= 2; ++yOffset) {
             int currentDrawX = drawOriginX + (2 * TILE_SIZE);
             int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-            tileCanvas.clear(); // Clear the canvas before drawing a new tile
+            tileCanvas.clear();
             drawTile(tileCanvas, conceptualGridStartX + 2, conceptualGridStartY + yOffset,
                      globalTileZ, tilePaths[yOffset + 2][4]);
-            tileCanvas.pushSprite(currentDrawX, currentDrawY);
+            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         }
 
@@ -289,27 +289,32 @@ void drawImageMatrixTask(void *pvParameters)
           for (int xOffset = -2; xOffset <= 2; ++xOffset) {
             int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
             int currentDrawY = drawOriginY + (-2 * TILE_SIZE);
-            tileCanvas.clear(); // Clear the canvas before drawing a new tile
+            tileCanvas.clear();
             drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY - 2,
                      globalTileZ, tilePaths[0][xOffset + 2]);
-            tileCanvas.pushSprite(currentDrawX, currentDrawY);
+            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         } else if (deltaY < 0) { // Scrolled up, new tiles on bottom
           for (int xOffset = -2; xOffset <= 2; ++xOffset) {
             int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
             int currentDrawY = drawOriginY + (2 * TILE_SIZE);
-            tileCanvas.clear(); // Clear the canvas before drawing a new tile
+            tileCanvas.clear();
             drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + 2,
                      globalTileZ, tilePaths[4][xOffset + 2]);
-            tileCanvas.pushSprite(currentDrawX, currentDrawY);
+            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         }
       }
       // Update previous drawing origin
       prevDrawOriginX = drawOriginX;
       prevDrawOriginY = drawOriginY;
-      // Draw a red point at the GPS fix location (center of the screen)
-      M5.Display.fillCircle(M5.Display.width() / 2, M5.Display.height() / 2, 5, TFT_RED);
+
+      // Draw a red point at the GPS fix location (center of the screen) on the screen buffer
+      screenBufferCanvas.fillCircle(M5.Display.width() / 2, M5.Display.height() / 2, 5, TFT_RED);
+      
+      // Push the entire screen buffer to the M5.Display once
+      screenBufferCanvas.pushSprite(0, 0);
+
       vTaskDelay(pdMS_TO_TICKS(2000)); // Display the image for 2 seconds
     }
     else
