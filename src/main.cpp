@@ -10,12 +10,18 @@
 #include "gps_task.h"        // Include the new GPS task header
 #include "tile_calculator.h" // Include the new tile calculator header
 #include "gui.h"             // Include the new GUI header
+#include "variometer_task.h" // Include the new variometer task header
 
 // global variables (define variables to be used throughout the program)
 uint32_t count;
 float globalPressure;
 float globalTemperature;
 SemaphoreHandle_t xSensorMutex;
+
+// Variometer global variables
+extern float globalAltitude_m;
+extern float globalVerticalSpeed_mps;
+extern SemaphoreHandle_t xVariometerMutex;
 
 // GPS global variables
 double globalLatitude;
@@ -96,13 +102,13 @@ void setup()
   M5.begin(cfg);            // initialize M5 device
   M5.Ex_I2C.begin();        // Initialize I2C for MS5637 with SDA=GPIO53, SCL=GPIO54
 
-  initSensorTask(); // Initialize the sensor task components
-  initGPSTask();    // Initialize the GPS task components
+  initSensorTask();     // Initialize the sensor task components
+  initGPSTask();        // Initialize the GPS task components
+  initVariometerTask(); // Initialize the variometer task components
 
-  xSensorMutex = xSemaphoreCreateMutex(); // Initialize the sensor mutex
-  xGPSMutex = xSemaphoreCreateMutex();    // Initialize the GPS mutex
-  xPositionMutex = xSemaphoreCreateMutex(); // Initialize the position mutex
-  xPositionMutex = xSemaphoreCreateMutex(); // Initialize the position mutex
+  xSensorMutex = xSemaphoreCreateMutex();     // Initialize the sensor mutex
+  xGPSMutex = xSemaphoreCreateMutex();        // Initialize the GPS mutex
+  xPositionMutex = xSemaphoreCreateMutex();   // Initialize the position mutex
 
   M5.Display.setTextSize(3);              // change text size
   M5.Display.print("Hello World!!!");     // display Hello World! and one line is displayed on the screen
@@ -139,8 +145,18 @@ void setup()
       4096,          // Stack size (bytes)
       NULL,          // Parameter to pass to function
       1,             // Task priority (0 to configMAX_PRIORITIES - 1)
-      NULL,          // Task handle
-      APP_CPU_NUM);  // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
+      NULL,             // Task handle
+      APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
+
+  // Create and start the variometer audio task
+  xTaskCreatePinnedToCore(
+      variometerAudioTask,   // Task function
+      "VariometerAudioTask", // Name of task
+      4096,                  // Stack size (bytes)
+      NULL,                  // Parameter to pass to function
+      1,                     // Task priority (0 to configMAX_PRIORITIES - 1)
+      NULL,                  // Task handle
+      APP_CPU_NUM);          // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
 
   // Create and start the image drawing task
   xTaskCreatePinnedToCore(
@@ -171,6 +187,9 @@ void loop()
   int currentTileY = 0;
   int currentTileZ = 0;
 
+  float currentBaroAltitude = 0;
+  float currentVerticalSpeed = 0;
+
   if (xSemaphoreTake(xSensorMutex, portMAX_DELAY) == pdTRUE)
   {
     currentPressure = globalPressure;
@@ -188,6 +207,13 @@ void loop()
     currentSpeed = globalSpeed; // Get current speed
     currentValid = globalValid; // Get GPS fix status
     xSemaphoreGive(xGPSMutex);
+  }
+
+  if (xSemaphoreTake(xVariometerMutex, portMAX_DELAY) == pdTRUE)
+  {
+    currentBaroAltitude = globalAltitude_m;
+    currentVerticalSpeed = globalVerticalSpeed_mps;
+    xSemaphoreGive(xVariometerMutex);
   }
 
   if (!currentValid)
@@ -224,6 +250,8 @@ void loop()
   M5.Display.printf("Alt: %.2f m\n", currentAltitude);
   M5.Display.printf("Sats: %lu, HDOP: %lu\n", currentSatellites, currentHDOP);
   M5.Display.printf("Speed: %.2f km/h\n", currentSpeed);
+  M5.Display.printf("Alt (Baro): %.2f m\n", currentBaroAltitude);
+  M5.Display.printf("V.Speed: %.2f m/s\n", currentVerticalSpeed);
   M5.Display.printf("Tile X: %d, Y: %d, Z: %d\n", currentTileX, currentTileY, currentTileZ);
 
   count++;
