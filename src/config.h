@@ -1,0 +1,39 @@
+#pragma once
+
+#include <cstddef> // For size_t
+
+// Configuration
+const bool SPEAKER_ENABLED = true; // Set to false to disable speaker functionality
+
+// GUI Constants
+const int TILE_SIZE = 256; // Assuming a common tile size, will adjust if needed
+const size_t TILE_CACHE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB cache
+const int TILE_GRID_DIMENSION = 5;
+const int TILE_PATH_MAX_LENGTH = 128;
+const int TILE_GRID_CENTER_OFFSET = 2;
+const int DRAW_IMAGE_TASK_DELAY_MS = 2000;
+const int GPS_FIX_CIRCLE_RADIUS = 5;
+
+// Variometer Constants
+const float STANDARD_SEA_LEVEL_PRESSURE_HPA = 1013.25;
+const float ALTITUDE_CONSTANT_A = 44330.0;
+const float ALTITUDE_CONSTANT_B = 5.255;
+const int SPEAKER_DEFAULT_VOLUME = 64;
+const unsigned long VARIOMETER_UPDATE_INTERVAL_MS = 200;
+const float ALTITUDE_CHANGE_THRESHOLD_MPS = 0.5;
+const int RISING_TONE_BASE_FREQ_HZ = 1000;
+const int RISING_TONE_MULTIPLIER_HZ_PER_MPS = 50;
+const int TONE_DURATION_MS = 50;
+const int SINKING_TONE_BASE_FREQ_HZ = 500;
+const int SINKING_TONE_MULTIPLIER_HZ_PER_MPS = 50;
+const int MIN_TONE_FREQ_HZ = 100;
+const int VARIOMETER_TASK_DELAY_MS = 50;
+
+// GPS Constants
+const int GPS_TASK_DELAY_MS = 1000;
+const int GPS_INIT_DELAY_MS = 2000;
+const int GPS_FIX_TIMEOUT_MS = 10000; // 10 seconds
+const int GPS_SERIAL_BAUD_RATE = 115200;
+const int GPS_SERIAL_RX_PIN = 17; // GPIO17
+const int GPS_SERIAL_TX_PIN = 16; // GPIO16
+const int GPS_SERIAL_MODE   = 134217756;

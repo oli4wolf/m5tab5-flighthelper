@@ -56,7 +56,6 @@ extern M5Canvas screenBufferCanvas;
 
 #endif // __cplusplus
 
-extern const int TILE_SIZE;
 // Declarations for GUI-related functions will go here.
 
 #endif // GUI_H

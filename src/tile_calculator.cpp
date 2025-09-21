@@ -1,6 +1,7 @@
 #include "tile_calculator.h"
 #include <math.h>
 #include <M5Unified.h> // For M5.Display.width() and M5.Display.height()
+#include "config.h" // Include configuration constants
 
 void initTileCalculator() {
     // No specific initialization needed for now, but can be extended later.

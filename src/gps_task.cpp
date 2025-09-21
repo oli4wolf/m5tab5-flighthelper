@@ -2,6 +2,7 @@
 #include <M5Unified.h>
 #include <TinyGPSPlus.h>
 #include <freertos/semphr.h> // Required for mutex
+#include "config.h" // Include configuration constants
 
 // Declare extern global variables and mutex from main.cpp
 extern double globalLatitude;
@@ -20,12 +21,10 @@ TinyGPSPlus gps;
 // The serial port for GPS
 HardwareSerial gpsSerial(1); // Use UART1
 
-static uint32_t gps_count = 0;
-
 void initGPSTask() {
     // Initialize UART1 for GPS communication
     // RX (GPS TX) on GPIO0, TX (GPS RX) on GPIO1
-    gpsSerial.begin(115200, SERIAL_8N1, 17, 16); 
+    gpsSerial.begin(GPS_SERIAL_BAUD_RATE, GPS_SERIAL_MODE, GPS_SERIAL_RX_PIN, GPS_SERIAL_TX_PIN);
 
     if (!gpsSerial) {
         ESP_LOGE("GPS", "Failed to initialize GPS serial port.");
@@ -76,7 +75,6 @@ void gpsReadTask(void *pvParameters) {
             // Serial.printf("GPS Task Count: %d, Waiting for GPS fix... (Sats: %lu, HDOP: %lu)\n", gps_count, gps.satellites.value(), gps.hdop.value()); // Removed to avoid USB CDC conflict
         }
         
-        gps_count++;
-        vTaskDelay(pdMS_TO_TICKS(500)); // Check for new GPS data every 100ms
+        vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
     }
 }

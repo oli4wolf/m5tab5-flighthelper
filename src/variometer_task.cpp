@@ -3,6 +3,7 @@
 #include "sensor_task.h" // For globalPressure and xSensorMutex
 #include <freertos/semphr.h>
 #include <math.h> // For pow()
+#include "config.h" // Include configuration constants
 
 // Declare extern global variables from main.cpp
 extern float globalPressure;
@@ -14,11 +15,11 @@ float globalVerticalSpeed_mps = 0.0; // Vertical speed in meters per second
 SemaphoreHandle_t xVariometerMutex;
 
 // Constants for altitude calculation (standard atmosphere)
-const float P0 = 1013.25; // Standard sea-level pressure in hPa
+// P0 is now defined in config.h as STANDARD_SEA_LEVEL_PRESSURE_HPA
 
 // Function to convert pressure (hPa) to altitude (meters)
 float pressureToAltitude(float pressure_hPa) {
-    return 44330.0 * (1.0 - pow(pressure_hPa / P0, 1.0 / 5.255));
+    return ALTITUDE_CONSTANT_A * (1.0 - pow(pressure_hPa / STANDARD_SEA_LEVEL_PRESSURE_HPA, 1.0 / ALTITUDE_CONSTANT_B));
 }
 
 void initVariometerTask() {
@@ -27,7 +28,7 @@ void initVariometerTask() {
         ESP_LOGE("Variometer", "Failed to create variometer mutex");
     }
     M5.Speaker.begin(); // Initialize the speaker
-    M5.Speaker.setVolume(64); // Set a default volume (0-255)
+    M5.Speaker.setVolume(SPEAKER_DEFAULT_VOLUME); // Set a default volume (0-255)
     ESP_LOGI("Variometer", "Variometer task initialized. Speaker enabled.");
 }
 
@@ -36,8 +37,8 @@ void variometerAudioTask(void *pvParameters) {
 
     float previousAltitude = 0.0;
     unsigned long previousMillis = millis();
-    const unsigned long updateIntervalMs = 200; // Update every 200ms
-    const float altitudeChangeThreshold_mps = 0.5; // meters per second for tone trigger
+    const unsigned long updateIntervalMs = VARIOMETER_UPDATE_INTERVAL_MS; // Update every VARIOMETER_UPDATE_INTERVAL_MS
+    const float altitudeChangeThreshold_mps = ALTITUDE_CHANGE_THRESHOLD_MPS; // meters per second for tone trigger
 
     // Initial altitude reading
     if (xSemaphoreTake(xSensorMutex, portMAX_DELAY) == pdTRUE) {
@@ -68,13 +69,13 @@ void variometerAudioTask(void *pvParameters) {
             // Tone generation logic
             if (verticalSpeed > altitudeChangeThreshold_mps) {
                 // Rising tone: higher frequency, frequency increases with climb rate
-                int frequency = 1000 + (int)(verticalSpeed * 50); // Example: 1000Hz + 50Hz per m/s
-                M5.Speaker.tone(frequency, 50); // Short tone
+                int frequency = RISING_TONE_BASE_FREQ_HZ + (int)(verticalSpeed * RISING_TONE_MULTIPLIER_HZ_PER_MPS);
+                M5.Speaker.tone(frequency, TONE_DURATION_MS); // Short tone
             } else if (verticalSpeed < -altitudeChangeThreshold_mps) {
                 // Sinking tone: lower frequency, frequency decreases with sink rate
-                int frequency = 500 - (int)(fabs(verticalSpeed) * 50); // Example: 500Hz - 50Hz per m/s
-                if (frequency < 100) frequency = 100; // Minimum frequency
-                M5.Speaker.tone(frequency, 50); // Short tone
+                int frequency = SINKING_TONE_BASE_FREQ_HZ - (int)(fabs(verticalSpeed) * SINKING_TONE_MULTIPLIER_HZ_PER_MPS);
+                if (frequency < MIN_TONE_FREQ_HZ) frequency = MIN_TONE_FREQ_HZ; // Minimum frequency
+                M5.Speaker.tone(frequency, TONE_DURATION_MS); // Short tone
             } else {
                 // Stable or minor changes, no tone
                 M5.Speaker.stop();
@@ -83,6 +84,6 @@ void variometerAudioTask(void *pvParameters) {
             previousAltitude = currentAltitude;
             previousMillis = currentMillis;
         }
-        vTaskDelay(pdMS_TO_TICKS(50)); // Check more frequently than updateIntervalMs
+        vTaskDelay(pdMS_TO_TICKS(VARIOMETER_TASK_DELAY_MS)); // Check more frequently than updateIntervalMs
     }
 }
