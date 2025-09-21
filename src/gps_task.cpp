@@ -19,7 +19,7 @@ extern SemaphoreHandle_t xGPSMutex;
 TinyGPSPlus gps;
 
 // The serial port for GPS
-HardwareSerial gpsSerial(1); // Use UART1
+HardwareSerial gpsSerial(GPS_UART); // Use UART1
 
 void initGPSTask() {
     // Initialize UART1 for GPS communication

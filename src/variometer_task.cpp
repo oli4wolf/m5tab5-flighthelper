@@ -67,18 +67,20 @@ void variometerAudioTask(void *pvParameters) {
             }
 
             // Tone generation logic
-            if (verticalSpeed > altitudeChangeThreshold_mps) {
-                // Rising tone: higher frequency, frequency increases with climb rate
-                int frequency = RISING_TONE_BASE_FREQ_HZ + (int)(verticalSpeed * RISING_TONE_MULTIPLIER_HZ_PER_MPS);
-                M5.Speaker.tone(frequency, TONE_DURATION_MS); // Short tone
-            } else if (verticalSpeed < -altitudeChangeThreshold_mps) {
-                // Sinking tone: lower frequency, frequency decreases with sink rate
-                int frequency = SINKING_TONE_BASE_FREQ_HZ - (int)(fabs(verticalSpeed) * SINKING_TONE_MULTIPLIER_HZ_PER_MPS);
-                if (frequency < MIN_TONE_FREQ_HZ) frequency = MIN_TONE_FREQ_HZ; // Minimum frequency
-                M5.Speaker.tone(frequency, TONE_DURATION_MS); // Short tone
-            } else {
-                // Stable or minor changes, no tone
-                M5.Speaker.stop();
+            if (SPEAKER_ENABLED) {
+                if (verticalSpeed > altitudeChangeThreshold_mps) {
+                    // Rising tone: higher frequency, frequency increases with climb rate
+                    int frequency = RISING_TONE_BASE_FREQ_HZ + (int)(verticalSpeed * RISING_TONE_MULTIPLIER_HZ_PER_MPS);
+                    M5.Speaker.tone(frequency, TONE_DURATION_MS); // Short tone
+                } else if (verticalSpeed < -altitudeChangeThreshold_mps) {
+                    // Sinking tone: lower frequency, frequency decreases with sink rate
+                    int frequency = SINKING_TONE_BASE_FREQ_HZ - (int)(fabs(verticalSpeed) * SINKING_TONE_MULTIPLIER_HZ_PER_MPS);
+                    if (frequency < MIN_TONE_FREQ_HZ) frequency = MIN_TONE_FREQ_HZ; // Minimum frequency
+                    M5.Speaker.tone(frequency, TONE_DURATION_MS); // Short tone
+                } else {
+                    // Stable or minor changes, no tone
+                    M5.Speaker.stop();
+                }
             }
 
             previousAltitude = currentAltitude;

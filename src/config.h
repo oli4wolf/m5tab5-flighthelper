@@ -3,7 +3,7 @@
 #include <cstddef> // For size_t
 
 // Configuration
-const bool SPEAKER_ENABLED = true; // Set to false to disable speaker functionality
+const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality
 
 // GUI Constants
 const int TILE_SIZE = 256; // Assuming a common tile size, will adjust if needed
@@ -37,3 +37,4 @@ const int GPS_SERIAL_BAUD_RATE = 115200;
 const int GPS_SERIAL_RX_PIN = 17; // GPIO17
 const int GPS_SERIAL_TX_PIN = 16; // GPIO16
 const int GPS_SERIAL_MODE   = 134217756;
+const int GPS_UART = 1; // Use UART1 for GPS
