@@ -54,11 +54,12 @@ void drawImageMatrixTask(void *pvParameters)
   int prevDrawOriginX = INT_MAX;
   int prevDrawOriginY = INT_MAX;
 
-  // TILE_GRID_DIMENSION x TILE_GRID_DIMENSION conceptual tile array to store file paths
-  char tilePaths[TILE_GRID_DIMENSION][TILE_GRID_DIMENSION][TILE_PATH_MAX_LENGTH];
+  // SCREEN_BUFFER_TILE_DIMENSION x SCREEN_BUFFER_TILE_DIMENSION conceptual tile array to store file paths
+  char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_PATH_MAX_LENGTH];
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
-  screenBufferCanvas.createSprite(M5.Display.width(), M5.Display.height()); // Initialize M5Canvas for full screen buffer
+  screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
+  screenBufferCanvas.setRotation(3); // Rotate counterclockwise 90 degrees (equivalent to 270 degrees clockwise)
 
   while (true)
   {
@@ -91,16 +92,16 @@ void drawImageMatrixTask(void *pvParameters)
         xSemaphoreGive(xPositionMutex);
       }
 
-      // Calculate the top-left coordinates for the 5x5 conceptual grid
-      // The central tile (globalTileX, globalTileY) will be at index [TILE_GRID_CENTER_OFFSET][TILE_GRID_CENTER_OFFSET] in the TILE_GRID_DIMENSION x TILE_GRID_DIMENSION array
-      int conceptualGridStartX = currentTileX - TILE_GRID_CENTER_OFFSET;
-      int conceptualGridStartY = currentTileY - TILE_GRID_CENTER_OFFSET;
+      // Calculate the top-left coordinates for the drawing grid
+      // The central tile (globalTileX, globalTileY) will be at index [DRAW_GRID_CENTER_OFFSET][DRAW_GRID_CENTER_OFFSET] in the DRAW_GRID_DIMENSION x DRAW_GRID_DIMENSION array
+      int conceptualGridStartX = currentTileX - DRAW_GRID_CENTER_OFFSET;
+      int conceptualGridStartY = currentTileY - DRAW_GRID_CENTER_OFFSET;
 
       // Populate the TILE_GRID_DIMENSION x TILE_GRID_DIMENSION tilePaths array
-      for (int y = 0; y < TILE_GRID_DIMENSION; ++y) {
-        for (int x = 0; x < TILE_GRID_DIMENSION; ++x) {
-          int tileToLoadX = conceptualGridStartX + x;
-          int tileToLoadY = conceptualGridStartY + y;
+      for (int y = 0; y < SCREEN_BUFFER_TILE_DIMENSION; ++y) {
+        for (int x = 0; x < SCREEN_BUFFER_TILE_DIMENSION; ++x) {
+          int tileToLoadX = currentTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
+          int tileToLoadY = currentTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
           sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", globalTileZ, tileToLoadX, tileToLoadY);
         }
       }
@@ -140,14 +141,14 @@ void drawImageMatrixTask(void *pvParameters)
       if (redrawNeeded) {
         screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
         ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
-        // Draw all TILE_GRID_DIMENSION * TILE_GRID_DIMENSION tiles to the screen buffer
-        for (int yOffset = -TILE_GRID_CENTER_OFFSET; yOffset <= TILE_GRID_CENTER_OFFSET; ++yOffset) {
-          for (int xOffset = -TILE_GRID_CENTER_OFFSET; xOffset <= TILE_GRID_CENTER_OFFSET; ++xOffset) {
+        // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
+        for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset) {
+          for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset) {
             int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
             int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
             tileCanvas.clear(); // Clear the individual tile canvas
             drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
-                     globalTileZ, tilePaths[yOffset + TILE_GRID_CENTER_OFFSET][xOffset + TILE_GRID_CENTER_OFFSET]);
+                     globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
             tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
           }
         }
@@ -158,41 +159,41 @@ void drawImageMatrixTask(void *pvParameters)
 
         // Only draw newly exposed tiles after scrolling onto the screen buffer
         if (deltaX > 0) { // Scrolled right, new tiles on left
-          for (int yOffset = -TILE_GRID_CENTER_OFFSET; yOffset <= TILE_GRID_CENTER_OFFSET; ++yOffset) {
-            int currentDrawX = drawOriginX + (-TILE_GRID_CENTER_OFFSET * TILE_SIZE);
+          for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset) {
+            int currentDrawX = drawOriginX + (-DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
             int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
             tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX - TILE_GRID_CENTER_OFFSET, conceptualGridStartY + yOffset,
-                     globalTileZ, tilePaths[yOffset + TILE_GRID_CENTER_OFFSET][0]);
+            drawTile(tileCanvas, conceptualGridStartX - DRAW_GRID_CENTER_OFFSET, conceptualGridStartY + yOffset,
+                     globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][0]);
             tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         } else if (deltaX < 0) { // Scrolled left, new tiles on right
-          for (int yOffset = -TILE_GRID_CENTER_OFFSET; yOffset <= TILE_GRID_CENTER_OFFSET; ++yOffset) {
-            int currentDrawX = drawOriginX + (TILE_GRID_CENTER_OFFSET * TILE_SIZE);
+          for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset) {
+            int currentDrawX = drawOriginX + (DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
             int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
             tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX + TILE_GRID_CENTER_OFFSET, conceptualGridStartY + yOffset,
-                     globalTileZ, tilePaths[yOffset + TILE_GRID_CENTER_OFFSET][TILE_GRID_DIMENSION - 1]);
+            drawTile(tileCanvas, conceptualGridStartX + DRAW_GRID_CENTER_OFFSET, conceptualGridStartY + yOffset,
+                     globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][SCREEN_BUFFER_TILE_DIMENSION - 1]);
             tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         }
 
         if (deltaY > 0) { // Scrolled down, new tiles on top
-          for (int xOffset = -TILE_GRID_CENTER_OFFSET; xOffset <= TILE_GRID_CENTER_OFFSET; ++xOffset) {
+          for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset) {
             int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-            int currentDrawY = drawOriginY + (-TILE_GRID_CENTER_OFFSET * TILE_SIZE);
+            int currentDrawY = drawOriginY + (-DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
             tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY - TILE_GRID_CENTER_OFFSET,
-                     globalTileZ, tilePaths[0][xOffset + TILE_GRID_CENTER_OFFSET]);
+            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY - DRAW_GRID_CENTER_OFFSET,
+                     globalTileZ, tilePaths[0][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
             tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         } else if (deltaY < 0) { // Scrolled up, new tiles on bottom
-          for (int xOffset = -TILE_GRID_CENTER_OFFSET; xOffset <= TILE_GRID_CENTER_OFFSET; ++xOffset) {
+          for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset) {
             int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-            int currentDrawY = drawOriginY + (TILE_GRID_CENTER_OFFSET * TILE_SIZE);
+            int currentDrawY = drawOriginY + (DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
             tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + TILE_GRID_CENTER_OFFSET,
-                     globalTileZ, tilePaths[TILE_GRID_DIMENSION - 1][xOffset + TILE_GRID_CENTER_OFFSET]);
+            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + DRAW_GRID_CENTER_OFFSET,
+                     globalTileZ, tilePaths[SCREEN_BUFFER_TILE_DIMENSION - 1][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
             tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
           }
         }
