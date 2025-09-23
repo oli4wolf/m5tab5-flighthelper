@@ -11,6 +11,7 @@
 #include "tile_calculator.h" // Include the new tile calculator header
 #include "gui.h"             // Include the new GUI header
 #include "variometer_task.h" // Include the new variometer task header
+#include "config.h"         // Include configuration constants
 
 // global variables (define variables to be used throughout the program)
 uint32_t count;
@@ -41,17 +42,17 @@ int globalTileX;
 int globalTileY;
 int globalTileZ;
 
-const int TILE_SIZE = 256; // Standard size for map tiles (e.g., OpenStreetMap)
+extern const int TILE_SIZE; // Standard size for map tiles (e.g., OpenStreetMap)
 
 const int APP_CPU_NUM = 1; // Define the core number for the application CPU (ESP32 has two cores: PRO_CPU_NUM=0 and APP_CPU_NUM=1)
 
 // SD Card variables
-const int SD_CMD_PIN = 44; // GPIO number for SD card CMD pin
-const int SD_CLK_PIN = 43; // GPIO number for SD card CLK pin
-const int SD_D0_PIN = 39;  // GPIO number for SD card D0 pin
-const int SD_D1_PIN = 40;  // GPIO number for SD card D1 pin
-const int SD_D2_PIN = 41;  // GPIO number for SD card D2
-const int SD_D3_PIN = 42;  // GPIO number for SD card D3 pin
+extern const int SD_CMD_PIN; // GPIO number for SD card CMD pin
+extern const int SD_CLK_PIN; // GPIO number for SD card CLK pin
+extern const int SD_D0_PIN;  // GPIO number for SD card D0 pin
+extern const int SD_D1_PIN;  // GPIO number for SD card D1 pin
+extern const int SD_D2_PIN;  // GPIO number for SD card D2
+extern const int SD_D3_PIN;  // GPIO number for SD card D3 pin
 
 // Function to draw a Jpeg image from SD card
 

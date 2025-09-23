@@ -2,11 +2,20 @@
 
 #include <cstddef> // For size_t
 
+const int TILE_SIZE = 256; // Standard size for map tiles (e.g., OpenStreetMap)
+
 // Configuration
 const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality
 
+// SD Card variables
+const int SD_CMD_PIN = 44; // GPIO number for SD card CMD pin
+const int SD_CLK_PIN = 43; // GPIO number for SD card CLK pin
+const int SD_D0_PIN = 39;  // GPIO number for SD card D0 pin
+const int SD_D1_PIN = 40;  // GPIO number for SD card D1 pin
+const int SD_D2_PIN = 41;  // GPIO number for SD card D2
+const int SD_D3_PIN = 42;  // GPIO number for SD card D3 pin
+
 // GUI Constants
-const int TILE_SIZE = 256; // Assuming a common tile size, will adjust if needed
 const size_t TILE_CACHE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB cache
 const int TILE_GRID_DIMENSION = 5;
 const int TILE_PATH_MAX_LENGTH = 128;
