@@ -24,128 +24,20 @@ extern int globalTileX;
 extern int globalTileY;
 extern int globalTileZ;
 // Global LRU Cache instance (1MB)
-LRUCache tileCache(TILE_CACHE_SIZE_BYTES); // 1MB cache
 M5Canvas tileCanvas(&M5.Display); // Declare M5Canvas globally for individual tile drawing
 M5Canvas screenBufferCanvas(&M5.Display); // Declare M5Canvas globally for full screen buffer
 
-// LRUCache class implementation
-LRUCache::LRUCache(size_t maxBytes) : currentSize(0), maxSize(maxBytes) {
-    cacheMutex = xSemaphoreCreateMutex();
-    if (cacheMutex == NULL) {
-        ESP_LOGE("LRUCache", "Failed to create cache mutex");
-        // Handle error appropriately, e.g., halt or throw exception
-    }
-    ESP_LOGI("LRUCache", "Cache initialized with max size: %u bytes", maxSize);
-}
-
-LRUCache::~LRUCache() {
-    if (cacheMutex != NULL) {
-        vSemaphoreDelete(cacheMutex);
-    }
-}
-
-void LRUCache::evict() {
-    if (cacheList.empty()) {
-        return;
-    }
-    // Evict the least recently used item (at the back of the list)
-    TileCacheEntry& lruEntry = cacheList.back();
-    currentSize -= lruEntry.data.size();
-    cacheMap.erase(lruEntry.path);
-    cacheList.pop_back();
-    ESP_LOGI("LRUCache", "Evicted tile: %s. Current size: %u bytes", lruEntry.path.c_str(), currentSize);
-}
-
-bool LRUCache::get(const std::string& key, std::vector<uint8_t>& outData) {
-    if (xSemaphoreTake(cacheMutex, portMAX_DELAY) != pdTRUE) {
-        ESP_LOGE("LRUCache", "Failed to take cache mutex in get()");
-        return false;
-    }
-
-    auto it = cacheMap.find(key);
-    if (it == cacheMap.end()) {
-        xSemaphoreGive(cacheMutex);
-        return false; // Not found
-    }
-
-    // Move the found item to the front (most recently used)
-    cacheList.splice(cacheList.begin(), cacheList, it->second);
-    outData = it->second->data; // Copy data
-    ESP_LOGI("LRUCache", "Cache hit for tile: %s. Current size: %u bytes", key.c_str(), currentSize);
-    xSemaphoreGive(cacheMutex);
-    return true;
-}
-
-void LRUCache::put(const std::string& key, const std::vector<uint8_t>& data, int z, int x, int y) {
-    if (xSemaphoreTake(cacheMutex, portMAX_DELAY) != pdTRUE) {
-        ESP_LOGE("LRUCache", "Failed to take cache mutex in put()");
-        return;
-    }
-
-    // Check if already in cache (update its position)
-    auto it = cacheMap.find(key);
-    if (it != cacheMap.end()) {
-        // Update data and move to front
-        it->second->data = data;
-        cacheList.splice(cacheList.begin(), cacheList, it->second);
-        ESP_LOGI("LRUCache", "Cache updated for tile: %s. Current size: %u bytes", key.c_str(), currentSize);
-        xSemaphoreGive(cacheMutex);
-        return;
-    }
-
-    // Add new item
-    size_t itemSize = data.size();
-    while (currentSize + itemSize > maxSize && !cacheList.empty()) {
-        evict();
-    }
-
-    if (currentSize + itemSize > maxSize) {
-        ESP_LOGW("LRUCache", "Item too large for cache, even after eviction: %s (size: %u bytes)", key.c_str(), itemSize);
-        xSemaphoreGive(cacheMutex);
-        return;
-    }
-
-    cacheList.emplace_front(key, data, z, x, y);
-    cacheMap[key] = cacheList.begin();
-    currentSize += itemSize;
-    ESP_LOGI("LRUCache", "Added tile to cache: %s (size: %u bytes). Current size: %u bytes", key.c_str(), itemSize, currentSize);
-    xSemaphoreGive(cacheMutex);
-}
-
-bool LRUCache::contains(const std::string& key) {
-    if (xSemaphoreTake(cacheMutex, portMAX_DELAY) != pdTRUE) {
-        ESP_LOGE("LRUCache", "Failed to take cache mutex in contains()");
-        return false;
-    }
-    bool found = cacheMap.count(key) > 0;
-    xSemaphoreGive(cacheMutex);
-    return found;
-}
 
 // Helper function to draw a single tile, handling cache and SD loading
 void drawTile(M5Canvas& canvas, int tileX, int tileY, int zoom, const char* filePath) {
-  std::vector<uint8_t> cachedData;
-  if (tileCache.get(filePath, cachedData)) {
-    canvas.drawJpg(cachedData.data(), cachedData.size(), 0, 0);
-    ESP_LOGI("drawTile", "Drew Jpeg from cache: %s", filePath);
-  } else {
-    File file = SD_MMC.open(filePath);
-    if (!file) {
-      ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePath);
-      return;
-    }
-    size_t fileSize = file.size();
-    cachedData.resize(fileSize);
-    if (file.read(cachedData.data(), fileSize) != fileSize) {
-      ESP_LOGE("SD_CARD", "Failed to read entire file: %s", filePath);
-      file.close();
-      return;
-    }
-    file.close();
-    tileCache.put(filePath, cachedData, zoom, tileX, tileY);
-    canvas.drawJpg(cachedData.data(), cachedData.size(), 0, 0);
-    ESP_LOGI("drawTile", "Loaded and drew Jpeg from SD: %s", filePath);
+  File file = SD_MMC.open(filePath);
+  if (!file) {
+    ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePath);
+    return;
   }
+  canvas.drawJpgFile(SD_MMC, filePath, 0, 0);
+  file.close();
+  ESP_LOGI("drawTile", "Loaded and drew Jpeg from SD: %s", filePath);
 }
 
 void drawImageMatrixTask(void *pvParameters)
