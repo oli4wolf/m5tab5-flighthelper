@@ -50,16 +50,15 @@ void drawImageMatrixTask(void *pvParameters)
   double currentSpeed = 0;
   bool currentValid = false;
 
-  // Variables to track previous drawing origin for optimized redrawing
-  int prevDrawOriginX = INT_MAX;
-  int prevDrawOriginY = INT_MAX;
 
   // SCREEN_BUFFER_TILE_DIMENSION x SCREEN_BUFFER_TILE_DIMENSION conceptual tile array to store file paths
   char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_PATH_MAX_LENGTH];
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
-  screenBufferCanvas.setRotation(3); // Rotate counterclockwise 90 degrees (equivalent to 270 degrees clockwise)
+  //screenBufferCanvas.setRotation(3); // Rotate counterclockwise 90 degrees (equivalent to 270 degrees clockwise)
+  //ESP_LOGI("GUI", "screenBufferCanvas.width() (after canvas rotation): %d", screenBufferCanvas.width());
+  //ESP_LOGI("GUI", "screenBufferCanvas.height() (after canvas rotation): %d", screenBufferCanvas.height());
 
   while (true)
   {
@@ -111,102 +110,47 @@ void drawImageMatrixTask(void *pvParameters)
       // is centered on the screen.
       // The tile containing the GPS coordinate is (currentTileX, currentTileY).
       // The top-left corner of this tile should be drawn at:
-      // (M5.Display.width() / 2 - pixelOffsetX, M5.Display.height() / 2 - pixelOffsetY)
-      int drawOriginX = (M5.Display.width() / 2) - pixelOffsetX;
-      int drawOriginY = (M5.Display.height() / 2) - pixelOffsetY;
+      // (screenBufferCanvas.width() / 2 - pixelOffsetX, screenBufferCanvas.height() / 2 - pixelOffsetY)
+      int drawOriginX = (screenBufferCanvas.width() / 2) - pixelOffsetX;
+      int drawOriginY = (screenBufferCanvas.height() / 2) - pixelOffsetY;
 
-      bool redrawNeeded = false;
-      int deltaX = 0;
-      int deltaY = 0;
-
-      if (prevDrawOriginX == INT_MAX || prevDrawOriginY == INT_MAX) {
-        redrawNeeded = true; // First run, force full redraw
-        ESP_LOGI("drawImageMatrixTask", "First run, forcing full redraw.");
-      } else {
-        deltaX = drawOriginX - prevDrawOriginX;
-        deltaY = drawOriginY - prevDrawOriginY;
-
-        // Check if the central tile coordinates have changed significantly
-        // This is a more robust check than just pixel offset for full redraw
-        if (abs(deltaX) >= TILE_SIZE || abs(deltaY) >= TILE_SIZE) {
-          redrawNeeded = true;
-          ESP_LOGI("drawImageMatrixTask", "Significant tile shift detected (deltaX: %d, deltaY: %d), forcing full redraw.", deltaX, deltaY);
-        } else if (deltaX != 0 || deltaY != 0) {
-          // Small shift, can scroll
-          M5.Display.scroll(deltaX, deltaY);
-          ESP_LOGI("drawImageMatrixTask", "Scrolling display by (%d, %d).", deltaX, deltaY);
+      screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
+      ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
+      // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
+      for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset) {
+        for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset) {
+          int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
+          int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
+          tileCanvas.clear(); // Clear the individual tile canvas
+          drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
+                   globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+          tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
         }
       }
-
-      if (redrawNeeded) {
-        screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
-        ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
-        // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
-        for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset) {
-          for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset) {
-            int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-            int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-            tileCanvas.clear(); // Clear the individual tile canvas
-            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
-                     globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
-            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
-          }
-        }
-      } else if (deltaX != 0 || deltaY != 0) {
-        // Small shift, can scroll the screen buffer
-        screenBufferCanvas.scroll(deltaX, deltaY);
-        ESP_LOGI("drawImageMatrixTask", "Scrolling screen buffer by (%d, %d).", deltaX, deltaY);
-
-        // Only draw newly exposed tiles after scrolling onto the screen buffer
-        if (deltaX > 0) { // Scrolled right, new tiles on left
-          for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset) {
-            int currentDrawX = drawOriginX + (-DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
-            int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-            tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX - DRAW_GRID_CENTER_OFFSET, conceptualGridStartY + yOffset,
-                     globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][0]);
-            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
-          }
-        } else if (deltaX < 0) { // Scrolled left, new tiles on right
-          for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset) {
-            int currentDrawX = drawOriginX + (DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
-            int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-            tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX + DRAW_GRID_CENTER_OFFSET, conceptualGridStartY + yOffset,
-                     globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][SCREEN_BUFFER_TILE_DIMENSION - 1]);
-            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
-          }
-        }
-
-        if (deltaY > 0) { // Scrolled down, new tiles on top
-          for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset) {
-            int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-            int currentDrawY = drawOriginY + (-DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
-            tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY - DRAW_GRID_CENTER_OFFSET,
-                     globalTileZ, tilePaths[0][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
-            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
-          }
-        } else if (deltaY < 0) { // Scrolled up, new tiles on bottom
-          for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset) {
-            int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-            int currentDrawY = drawOriginY + (DRAW_GRID_CENTER_OFFSET * TILE_SIZE);
-            tileCanvas.clear();
-            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + DRAW_GRID_CENTER_OFFSET,
-                     globalTileZ, tilePaths[SCREEN_BUFFER_TILE_DIMENSION - 1][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
-            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY);
-          }
-        }
-      }
-      // Update previous drawing origin
-      prevDrawOriginX = drawOriginX;
-      prevDrawOriginY = drawOriginY;
 
       // Draw a red point at the GPS fix location (center of the screen) on the screen buffer
-      screenBufferCanvas.fillCircle(M5.Display.width() / 2, M5.Display.height() / 2, GPS_FIX_CIRCLE_RADIUS, TFT_RED);
+      int centerX = screenBufferCanvas.width() / 2;
+      int centerY = screenBufferCanvas.height() / 2;
+
+      // Draw arrow head (triangle)
+      screenBufferCanvas.fillTriangle(
+          centerX, centerY - ARROW_HEAD_LENGTH / 2,
+          centerX - ARROW_HEAD_WIDTH / 2, centerY + ARROW_HEAD_LENGTH / 2,
+          centerX + ARROW_HEAD_WIDTH / 2, centerY + ARROW_HEAD_LENGTH / 2,
+          TFT_RED
+      );
+
+      // Draw arrow shaft (line)
+      screenBufferCanvas.fillRect(
+          centerX - 1, // Thicker line
+          centerY + ARROW_HEAD_LENGTH / 2,
+          3, // Width of the shaft
+          ARROW_SHAFT_LENGTH,
+          TFT_RED
+      );
       
       // Push the entire screen buffer to the M5.Display once
-      screenBufferCanvas.pushSprite(0, 0);
+      screenBufferCanvas.pushSprite(-152, 128);
 
       vTaskDelay(pdMS_TO_TICKS(DRAW_IMAGE_TASK_DELAY_MS)); // Display the image for DRAW_IMAGE_TASK_DELAY_MS milliseconds
     }

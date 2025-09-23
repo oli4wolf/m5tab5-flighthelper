@@ -246,13 +246,14 @@ void loop()
   M5.Display.setCursor(0, 0);
   M5.Display.printf("Pressure: %.2f hPa\n", currentPressure);
   M5.Display.printf("Temperature: %.2f C\n", currentTemperature);
+  M5.Display.printf("Alt (Baro): %.2f m\n", currentBaroAltitude);
+  M5.Display.setCursor(0, 1024);
+  M5.Display.printf("V.Speed: %.2f m/s\n", currentVerticalSpeed);
   M5.Display.printf("Lat: %.6f\n", currentLatitude);
   M5.Display.printf("Lng: %.6f\n", currentLongitude);
   M5.Display.printf("Alt: %.2f m\n", currentAltitude);
   M5.Display.printf("Sats: %lu, HDOP: %lu\n", currentSatellites, currentHDOP);
   M5.Display.printf("Speed: %.2f km/h\n", currentSpeed);
-  M5.Display.printf("Alt (Baro): %.2f m\n", currentBaroAltitude);
-  M5.Display.printf("V.Speed: %.2f m/s\n", currentVerticalSpeed);
   M5.Display.printf("Tile X: %d, Y: %d, Z: %d\n", currentTileX, currentTileY, currentTileZ);
 
   count++;

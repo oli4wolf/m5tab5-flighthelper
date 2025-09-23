@@ -25,6 +25,11 @@ const int DRAW_GRID_CENTER_OFFSET = 1;
 const int DRAW_IMAGE_TASK_DELAY_MS = 2000;
 const int GPS_FIX_CIRCLE_RADIUS = 5;
 
+// Arrow Constants
+const int ARROW_HEAD_LENGTH = 10;
+const int ARROW_HEAD_WIDTH = 10;
+const int ARROW_SHAFT_LENGTH = 15;
+
 // Variometer Constants
 const float STANDARD_SEA_LEVEL_PRESSURE_HPA = 1013.25;
 const float ALTITUDE_CONSTANT_A = 44330.0;
