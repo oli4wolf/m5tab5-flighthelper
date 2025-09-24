@@ -145,7 +145,7 @@ void variometerTask(void *pvParameters) {
         }
 
         // Display update logic (without GPS or tile data)
-        updateDisplayWithTelemetry(currentPressure, currentTemperature, currentBaroAltitude, currentVerticalSpeed);
+        //updateDisplayWithTelemetry(currentPressure, currentTemperature, currentBaroAltitude, currentVerticalSpeed);
         vTaskDelay(pdMS_TO_TICKS(VARIOMETER_TASK_DELAY_MS)); // Check more frequently than updateIntervalMs
     }
 }

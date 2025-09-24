@@ -57,15 +57,13 @@ void gpsReadTask(void *pvParameters) {
                         globalHDOP = gps.hdop.value();
                         globalValid = true; // GPS fix is valid
 
-                        
-
                         xSemaphoreGive(xGPSMutex);
                     }
                     
                     // Update display with GPS telemetry
-                    updateDisplayWithGPSTelemetry(globalLatitude, globalLongitude, globalAltitude, globalSatellites, globalHDOP, globalSpeed);
+                    //updateDisplayWithGPSTelemetry(globalLatitude, globalLongitude, globalAltitude, globalSatellites, globalHDOP, globalSpeed);
                 } else {
-                    updateDisplayGPSInvalid();
+                    //updateDisplayGPSInvalid();
                 }
             } else {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed

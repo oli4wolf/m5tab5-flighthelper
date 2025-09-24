@@ -24,12 +24,12 @@ extern float globalVerticalSpeed_mps;
 extern SemaphoreHandle_t xVariometerMutex;
 
 // GPS global variables
-double globalLatitude;
-double globalLongitude;
-double globalAltitude;
+double globalLatitude = 46.947597;
+double globalLongitude = 7.440434;
+double globalAltitude = 542.5; // Initial altitude set to Bern, Switzerland
 unsigned long globalSatellites;
 unsigned long globalHDOP;
-bool globalValid; // Indicates if a valid GPS fix is available
+bool globalValid = false; // Indicates if a valid GPS fix is available
 double globalDirection;
 double globalSpeed; // Added for GPS speed in km/h
 uint32_t globalTime;
@@ -177,6 +177,47 @@ void setup()
 // loop function acquires values from sensors, rewrites the screen, etc.
 void loop()
 {
-  // The loop function is intentionally left empty because all tasks are handled in FreeRTOS tasks.
+  float currentPressure = 0;
+  float currentTemperature = 0;
+  double currentLatitude = 0;
+  double currentLongitude = 0;
+  double currentAltitude = 0;
+  unsigned long currentSatellites = 0;
+  unsigned long currentHDOP = 0;
+  double currentSpeed = 0;   // Added for current speed
+  bool currentValid = false; // Added for GPS fix status
+
+  int currentTileX = 0;
+  int currentTileY = 0;
+  int currentTileZ = 0;
+
+  float currentBaroAltitude = 0;
+  float currentVerticalSpeed = 0;
+
+  if (xSemaphoreTake(xSensorMutex, portMAX_DELAY) == pdTRUE)
+  {
+    currentPressure = globalPressure;
+    currentTemperature = globalTemperature;
+    xSemaphoreGive(xSensorMutex);
+  }
+
+  if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+  {
+    currentLatitude = globalLatitude;
+    currentLongitude = globalLongitude;
+    currentAltitude = globalAltitude;
+    currentSatellites = globalSatellites;
+    currentHDOP = globalHDOP;
+    currentSpeed = globalSpeed; // Get current speed
+    xSemaphoreGive(xGPSMutex);
+  }
+
+  if (xSemaphoreTake(xVariometerMutex, portMAX_DELAY) == pdTRUE)
+  {
+    currentBaroAltitude = globalAltitude_m;
+    currentVerticalSpeed = globalVerticalSpeed_mps;
+    xSemaphoreGive(xVariometerMutex);
+  }
+
   delay(1000);
 }
