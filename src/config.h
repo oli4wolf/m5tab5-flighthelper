@@ -51,6 +51,9 @@ const int SINKING_TONE_MULTIPLIER_HZ_PER_MPS = 50;
 const int MIN_TONE_FREQ_HZ = 100;
 const int VARIOMETER_TASK_DELAY_MS = 50;
 
+// Altitude Filter
+const int ALTITUDE_FILTER_SIZE = 10; // Number of samples for moving average filter
+
 // GPS Constants
 const int GPS_TASK_DELAY_MS = 1000;
 const int GPS_INIT_DELAY_MS = 2000;

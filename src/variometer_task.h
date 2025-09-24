@@ -9,7 +9,7 @@ extern "C" {
 
 void initVariometerTask();
 void variometerTask(void *pvParameters);
-void updateDisplayWithTelemetry(float pressure, float temperature, float baroAltitude, float verticalSpeed, double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed, int tileX, int tileY, int tileZ);
+void updateDisplayWithTelemetry(float pressure, float temperature, float baroAltitude, float verticalSpeed);
 
 #ifdef __cplusplus
 }

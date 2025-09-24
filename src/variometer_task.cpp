@@ -1,11 +1,10 @@
 #include "variometer_task.h"
 #include <M5Unified.h>
 #include "sensor_task.h"     // For globalPressure and xSensorMutex
-#include "gps_task.h"        // For global GPS variables and mutex
-#include "tile_calculator.h" // For tile calculation functions
 #include "gui.h"             // For M5.Display functions
 #include <freertos/semphr.h>
 #include <math.h> // For pow()
+#include <vector> // For std::vector
 #include "config.h" // Include configuration constants
 
 // Declare extern global variables from main.cpp
@@ -13,22 +12,11 @@ extern float globalPressure;
 extern float globalTemperature; // Added for global temperature
 extern SemaphoreHandle_t xSensorMutex;
 
-// GPS global variables (declared extern as they are defined in main.cpp)
-extern double globalLatitude;
-extern double globalLongitude;
-extern double globalAltitude;
-extern unsigned long globalSatellites;
-extern unsigned long globalHDOP;
-extern bool globalValid; // Indicates if a valid GPS fix is available
-extern double globalSpeed; // Added for GPS speed in km/h
-extern SemaphoreHandle_t xGPSMutex;
+// Moving average filter variables
+static std::vector<float> altitudeBuffer;
+static size_t bufferIndex = 0;
+static bool bufferFull = false;
 
-// Global variables for tile coordinates (declared extern as they are defined in main.cpp)
-extern SemaphoreHandle_t xPositionMutex;
-extern int globalTileX;
-extern int globalTileY;
-extern int globalTileZ;
-extern const int TILE_SIZE; // Standard size for map tiles (e.g., OpenStreetMap)
 
 // Global variables for variometer
 float globalAltitude_m = 0.0; // Current altitude in meters
@@ -48,6 +36,10 @@ void initVariometerTask() {
     if (xVariometerMutex == NULL) {
         ESP_LOGE("Variometer", "Failed to create variometer mutex");
     }
+    altitudeBuffer.reserve(ALTITUDE_FILTER_SIZE); // Pre-allocate memory
+    for (int i = 0; i < ALTITUDE_FILTER_SIZE; ++i) {
+        altitudeBuffer.push_back(0.0); // Initialize with zeros
+    }
     M5.Speaker.begin(); // Initialize the speaker
     M5.Speaker.setVolume(SPEAKER_DEFAULT_VOLUME); // Set a default volume (0-255)
     ESP_LOGI("Variometer", "Variometer task initialized. Speaker enabled.");
@@ -62,9 +54,15 @@ void variometerTask(void *pvParameters) {
     const float altitudeChangeThreshold_mps = ALTITUDE_CHANGE_THRESHOLD_MPS; // meters per second for tone trigger
 
     // Initial altitude reading
+    // Initial altitude reading and fill buffer
     if (xSemaphoreTake(xSensorMutex, portMAX_DELAY) == pdTRUE) {
-        previousAltitude = pressureToAltitude(globalPressure);
+        float initialPressure = globalPressure;
         xSemaphoreGive(xSensorMutex);
+        float initialAltitude = pressureToAltitude(initialPressure);
+        for (int i = 0; i < ALTITUDE_FILTER_SIZE; ++i) {
+            altitudeBuffer[i] = initialAltitude;
+        }
+        previousAltitude = initialAltitude; // Use initial altitude for the first comparison
     }
 
     for (;;) {
@@ -76,13 +74,29 @@ void variometerTask(void *pvParameters) {
                 xSemaphoreGive(xSensorMutex);
             }
 
-            float currentAltitude = pressureToAltitude(currentPressure);
-            float altitudeChange = currentAltitude - previousAltitude;
+            float rawAltitude = pressureToAltitude(currentPressure);
+
+            // Add raw altitude to buffer
+            altitudeBuffer[bufferIndex] = rawAltitude;
+            bufferIndex = (bufferIndex + 1) % ALTITUDE_FILTER_SIZE;
+            if (bufferIndex == 0) { // Buffer has wrapped around at least once
+                bufferFull = true;
+            }
+
+            // Calculate averaged altitude
+            float averagedAltitude = 0.0;
+            int count = bufferFull ? ALTITUDE_FILTER_SIZE : bufferIndex;
+            for (int i = 0; i < count; ++i) {
+                averagedAltitude += altitudeBuffer[i];
+            }
+            averagedAltitude /= count;
+
+            float altitudeChange = averagedAltitude - previousAltitude;
             float timeDeltaSeconds = (float)(currentMillis - previousMillis) / 1000.0;
             float verticalSpeed = altitudeChange / timeDeltaSeconds; // meters per second
 
             if (xSemaphoreTake(xVariometerMutex, portMAX_DELAY) == pdTRUE) {
-                globalAltitude_m = currentAltitude;
+                globalAltitude_m = averagedAltitude;
                 globalVerticalSpeed_mps = verticalSpeed;
                 xSemaphoreGive(xVariometerMutex);
             }
@@ -104,24 +118,14 @@ void variometerTask(void *pvParameters) {
                 }
             }
 
-            previousAltitude = currentAltitude;
+            previousAltitude = averagedAltitude; // Update previous altitude with the averaged value
             previousMillis = currentMillis;
         }
 
         // Display update logic (moved from main.cpp)
         float currentPressure = 0;
         float currentTemperature = 0;
-        double currentLatitude = 0;
-        double currentLongitude = 0;
-        double currentAltitude = 0;
-        unsigned long currentSatellites = 0;
-        unsigned long currentHDOP = 0;
-        double currentSpeed = 0;   // Added for current speed
-        bool currentValid = false; // Added for GPS fix status
-
-        int currentTileX = 0;
-        int currentTileY = 0;
-        int currentTileZ = 0;
+        // GPS and Tile related variables removed
 
         float currentBaroAltitude = 0;
         float currentVerticalSpeed = 0;
@@ -133,18 +137,6 @@ void variometerTask(void *pvParameters) {
             xSemaphoreGive(xSensorMutex);
         }
 
-        if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
-        {
-            currentLatitude = globalLatitude;
-            currentLongitude = globalLongitude;
-            currentAltitude = globalAltitude;
-            currentSatellites = globalSatellites;
-            currentHDOP = globalHDOP;
-            currentSpeed = globalSpeed; // Get current speed
-            currentValid = globalValid; // Get GPS fix status
-            xSemaphoreGive(xGPSMutex);
-        }
-
         if (xSemaphoreTake(xVariometerMutex, portMAX_DELAY) == pdTRUE)
         {
             currentBaroAltitude = globalAltitude_m;
@@ -152,37 +144,13 @@ void variometerTask(void *pvParameters) {
             xSemaphoreGive(xVariometerMutex);
         }
 
-        if (!currentValid)
-        {
-            M5.Display.setCursor(0, 0);
-            M5.Display.clear(TFT_BLACK);
-            M5.Display.printf("Waiting for GPS fix...\n");
-            // No delay here, as the task already has a delay at the end of the loop
-        }
-        else
-        {
-            // Calculate tile coordinates
-            currentTileZ = calculateZoomLevel(currentSpeed, M5.Display.width(), M5.Display.height());
-            latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
-
-            // Update global tile coordinates (if needed for other tasks)
-            ESP_LOGI("Variometer", "Attempting to take xPositionMutex. Handle: %p", (void*)xPositionMutex);
-            if (xSemaphoreTake(xPositionMutex, portMAX_DELAY) == pdTRUE)
-            { // Using GPS mutex for tile data as well
-                globalTileX = currentTileX;
-                globalTileY = currentTileY;
-                globalTileZ = currentTileZ;
-                ESP_LOGI("TileCalc", "Tile X: %d, Tile Y: %d, Zoom: %d", globalTileX, globalTileY, globalTileZ);
-                xSemaphoreGive(xPositionMutex);
-            }
-
-            updateDisplayWithTelemetry(currentPressure, currentTemperature, currentBaroAltitude, currentVerticalSpeed, currentLatitude, currentLongitude, currentAltitude, currentSatellites, currentHDOP, currentSpeed, currentTileX, currentTileY, currentTileZ);
-        }
+        // Display update logic (without GPS or tile data)
+        updateDisplayWithTelemetry(currentPressure, currentTemperature, currentBaroAltitude, currentVerticalSpeed);
         vTaskDelay(pdMS_TO_TICKS(VARIOMETER_TASK_DELAY_MS)); // Check more frequently than updateIntervalMs
     }
 }
 
-void updateDisplayWithTelemetry(float pressure, float temperature, float baroAltitude, float verticalSpeed, double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed, int tileX, int tileY, int tileZ){
+void updateDisplayWithTelemetry(float pressure, float temperature, float baroAltitude, float verticalSpeed){
     M5.Display.setCursor(0, 0);
     M5.Display.fillRect(0, 0, 720, 256, TFT_BLACK); // Clear the area for new text int32_t x, int32_t y, int32_t w, int32_t h
     M5.Display.printf("Pressure: %.2f hPa\n", pressure);
