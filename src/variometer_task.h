@@ -8,7 +8,8 @@ extern "C" {
 #endif
 
 void initVariometerTask();
-void variometerAudioTask(void *pvParameters);
+void variometerTask(void *pvParameters);
+void updateDisplayWithTelemetry(float pressure, float temperature, float baroAltitude, float verticalSpeed, double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed, int tileX, int tileY, int tileZ);
 
 #ifdef __cplusplus
 }

@@ -15,6 +15,12 @@ const int SD_D1_PIN = 40;  // GPIO number for SD card D1 pin
 const int SD_D2_PIN = 41;  // GPIO number for SD card D2
 const int SD_D3_PIN = 42;  // GPIO number for SD card D3 pin
 
+// Task Stack Sizes
+const int SENSOR_TASK_STACK_SIZE = 8192;
+const int GPS_TASK_STACK_SIZE = 4096;
+const int VARIOMETER_TASK_STACK_SIZE = 4096;
+const int IMAGE_MATRIX_TASK_STACK_SIZE = 8192;
+
 // GUI Constants
 const size_t TILE_CACHE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB cache
 const int SCREEN_BUFFER_TILE_DIMENSION = 4;

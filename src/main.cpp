@@ -54,8 +54,13 @@ extern const int SD_D1_PIN;  // GPIO number for SD card D1 pin
 extern const int SD_D2_PIN;  // GPIO number for SD card D2
 extern const int SD_D3_PIN;  // GPIO number for SD card D3 pin
 
-// Function to draw a Jpeg image from SD card
+// Task Stack Sizes
+extern const int SENSOR_TASK_STACK_SIZE;
+extern const int GPS_TASK_STACK_SIZE;
+extern const int VARIOMETER_TASK_STACK_SIZE;
+extern const int IMAGE_MATRIX_TASK_STACK_SIZE;
 
+// Function to draw a Jpeg image from SD card
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
   ESP_LOGI("SD_CARD", "Listing directory: %s", dirname);
@@ -133,7 +138,7 @@ void setup()
   xTaskCreatePinnedToCore(
       sensorReadTask,   // Task function
       "SensorReadTask", // Name of task
-      8192,             // Stack size (bytes)
+      SENSOR_TASK_STACK_SIZE,             // Stack size (bytes)
       NULL,             // Parameter to pass to function
       1,                // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,             // Task handle
@@ -143,7 +148,7 @@ void setup()
   xTaskCreatePinnedToCore(
       gpsReadTask,   // Task function
       "GPSReadTask", // Name of task
-      4096,          // Stack size (bytes)
+      GPS_TASK_STACK_SIZE,          // Stack size (bytes)
       NULL,          // Parameter to pass to function
       1,             // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,             // Task handle
@@ -151,9 +156,9 @@ void setup()
 
   // Create and start the variometer audio task
   xTaskCreatePinnedToCore(
-      variometerAudioTask,   // Task function
-      "VariometerAudioTask", // Name of task
-      4096,                  // Stack size (bytes)
+      variometerTask,   // Task function
+      "VariometerTask", // Name of task
+      VARIOMETER_TASK_STACK_SIZE,                  // Stack size (bytes)
       NULL,                  // Parameter to pass to function
       1,                     // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,                  // Task handle
@@ -163,7 +168,7 @@ void setup()
   xTaskCreatePinnedToCore(
       drawImageMatrixTask,   // Task function
       "ImageMatrixTask", // Name of task
-      8192,             // Stack size (bytes)
+      IMAGE_MATRIX_TASK_STACK_SIZE,             // Stack size (bytes)
       NULL,             // Parameter to pass to function
       1,                // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,             // Task handle
@@ -243,18 +248,6 @@ void loop()
     }
   }
 
-  M5.Display.setCursor(0, 0);
-  M5.Display.printf("Pressure: %.2f hPa\n", currentPressure);
-  M5.Display.printf("Temperature: %.2f C\n", currentTemperature);
-  M5.Display.printf("Alt (Baro): %.2f m\n", currentBaroAltitude);
-  M5.Display.setCursor(0, 1024);
-  M5.Display.printf("V.Speed: %.2f m/s\n", currentVerticalSpeed);
-  M5.Display.printf("Lat: %.6f\n", currentLatitude);
-  M5.Display.printf("Lng: %.6f\n", currentLongitude);
-  M5.Display.printf("Alt: %.2f m\n", currentAltitude);
-  M5.Display.printf("Sats: %lu, HDOP: %lu\n", currentSatellites, currentHDOP);
-  M5.Display.printf("Speed: %.2f km/h\n", currentSpeed);
-  M5.Display.printf("Tile X: %d, Y: %d, Z: %d\n", currentTileX, currentTileY, currentTileZ);
 
   count++;
   delay(1000);
