@@ -22,9 +22,15 @@ bool drawJpgFromSD(const char* filePath);
 } // extern "C"
 
 extern M5Canvas screenBufferCanvas;
+extern M5Canvas latLonCanvas;
+extern M5Canvas speedCanvas;
+extern M5Canvas altitudeCanvas;
 
 #endif // __cplusplus
 
 // Declarations for GUI-related functions will go here.
+void updateDisplayWithLatLon();
+void updateDisplayWithSpeed();
+void updateDisplayWithAltitude();
 
 #endif // GUI_H

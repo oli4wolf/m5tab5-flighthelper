@@ -38,6 +38,16 @@ const int ARROW_HEAD_LENGTH = 10;
 const int ARROW_HEAD_WIDTH = 10;
 const int ARROW_SHAFT_LENGTH = 15;
 
+// Text Zone Constants (for GPS data display)
+const int TEXT_ZONE_HEIGHT = 30;
+const int TEXT_ZONE_WIDTH = 106; // Approximately M5.Display.width() / 3 for a 320px wide screen
+const int TEXT_ZONE_LAT_LON_X = 0;
+const int TEXT_ZONE_LAT_LON_Y = 0;
+const int TEXT_ZONE_SPEED_X = TEXT_ZONE_WIDTH;
+const int TEXT_ZONE_SPEED_Y = 0;
+const int TEXT_ZONE_ALTITUDE_X = TEXT_ZONE_WIDTH * 2;
+const int TEXT_ZONE_ALTITUDE_Y = 0;
+
 // Variometer Constants
 const float STANDARD_SEA_LEVEL_PRESSURE_HPA = 1013.25;
 const float ALTITUDE_CONSTANT_A = 44330.0;

@@ -26,6 +26,9 @@ extern int globalTileZ;
 // Global LRU Cache instance (1MB)
 M5Canvas tileCanvas(&M5.Display); // Declare M5Canvas globally for individual tile drawing
 M5Canvas screenBufferCanvas(&M5.Display); // Declare M5Canvas globally for full screen buffer
+M5Canvas latLonCanvas(&M5.Display);
+M5Canvas speedCanvas(&M5.Display);
+M5Canvas altitudeCanvas(&M5.Display);
 
 
 // Helper function to draw a single tile, handling cache and SD loading
@@ -56,6 +59,9 @@ void drawImageMatrixTask(void *pvParameters)
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
+  latLonCanvas.createSprite(TEXT_ZONE_WIDTH, TEXT_ZONE_HEIGHT);
+  speedCanvas.createSprite(TEXT_ZONE_WIDTH, TEXT_ZONE_HEIGHT);
+  altitudeCanvas.createSprite(TEXT_ZONE_WIDTH, TEXT_ZONE_HEIGHT);
 
   while (true)
   {
@@ -129,6 +135,7 @@ void drawImageMatrixTask(void *pvParameters)
           tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
         }
       }
+      
 
       // Draw a red point at the GPS fix location (center of the screen) on the screen buffer
       int centerX = screenBufferCanvas.width() / 2;
@@ -154,7 +161,70 @@ void drawImageMatrixTask(void *pvParameters)
       // Push the entire screen buffer to the M5.Display once
       screenBufferCanvas.pushSprite(-152, 128);
 
+      // Update and display text zones
+      updateDisplayWithLatLon();
+      updateDisplayWithSpeed();
+      updateDisplayWithAltitude();
+
       vTaskDelay(pdMS_TO_TICKS(DRAW_IMAGE_TASK_DELAY_MS)); // Display the image for DRAW_IMAGE_TASK_DELAY_MS milliseconds
     }
   }
+}
+
+// Implementations for text zone update functions
+void updateDisplayWithLatLon() {
+  double currentLatitude = 0;
+  double currentLongitude = 0;
+  extern SemaphoreHandle_t xGPSMutex; // Declare extern here
+  extern double globalLatitude; // Declare extern here
+  extern double globalLongitude; // Declare extern here
+
+  if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE) {
+    currentLatitude = globalLatitude;
+    currentLongitude = globalLongitude;
+    xSemaphoreGive(xGPSMutex);
+  }
+
+  latLonCanvas.clear(TFT_BLACK);
+  latLonCanvas.setFont(&fonts::Font2);
+  latLonCanvas.setTextColor(TFT_WHITE);
+  latLonCanvas.setCursor(0, 0);
+  latLonCanvas.printf("Lat:%.4f\nLon:%.4f", currentLatitude, currentLongitude);
+  latLonCanvas.pushSprite(TEXT_ZONE_LAT_LON_X, TEXT_ZONE_LAT_LON_Y);
+}
+
+void updateDisplayWithSpeed() {
+  double currentSpeed = 0;
+  extern SemaphoreHandle_t xGPSMutex; // Declare extern here
+  extern double globalSpeed; // Declare extern here
+
+  if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE) {
+    currentSpeed = globalSpeed;
+    xSemaphoreGive(xGPSMutex);
+  }
+
+  speedCanvas.clear(TFT_BLACK);
+  speedCanvas.setFont(&fonts::Font2);
+  speedCanvas.setTextColor(TFT_WHITE);
+  speedCanvas.setCursor(0, 0);
+  speedCanvas.printf("Speed:%.1f km/h", currentSpeed);
+  speedCanvas.pushSprite(TEXT_ZONE_SPEED_X, TEXT_ZONE_SPEED_Y);
+}
+
+void updateDisplayWithAltitude() {
+  float currentBaroAltitude = 0;
+  extern SemaphoreHandle_t xVariometerMutex; // Declare extern here
+  extern float globalAltitude_m; // Declare extern here
+
+  if (xSemaphoreTake(xVariometerMutex, portMAX_DELAY) == pdTRUE) {
+    currentBaroAltitude = globalAltitude_m;
+    xSemaphoreGive(xVariometerMutex);
+  }
+
+  altitudeCanvas.clear(TFT_BLACK);
+  altitudeCanvas.setFont(&fonts::Font2);
+  altitudeCanvas.setTextColor(TFT_WHITE);
+  altitudeCanvas.setCursor(0, 0);
+  altitudeCanvas.printf("Alt:%.1f m", currentBaroAltitude);
+  altitudeCanvas.pushSprite(TEXT_ZONE_ALTITUDE_X, TEXT_ZONE_ALTITUDE_Y);
 }
