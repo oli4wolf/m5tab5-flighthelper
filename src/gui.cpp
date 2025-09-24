@@ -211,12 +211,13 @@ void updateDisplayWithVarioTelemetry()
 
   varioCanvas.clear(TFT_BLACK);
   varioCanvas.setFont(&fonts::Font2);
+  varioCanvas.setTextSize(2);
   varioCanvas.setTextColor(TFT_WHITE);
   varioCanvas.setCursor(0, 0);
-  varioCanvas.printf("P: %.1f hPa\n", currentPressure);
-  varioCanvas.printf("T: %.1f C\n", currentTemperature);
-  varioCanvas.printf("Alt: %.1f m\n", currentBaroAltitude);
-  varioCanvas.printf("Vario: %.1f m/s\n", currentVerticalSpeed);
+  varioCanvas.printf("Pressure: %.1f hPa\n", currentPressure);
+  varioCanvas.printf("Temperature: %.1f C\n", currentTemperature);
+  varioCanvas.printf("Altitude: %.1f m\n", currentBaroAltitude);
+  varioCanvas.printf("Vertical Speed: %.1f m/s\n", currentVerticalSpeed);
   ESP_LOGI("updateDisplayWithVarioTelemetry", "Pushing varioCanvas to M5.Display at (0, 0).");
   varioCanvas.pushSprite(0, 0);
   ESP_LOGI("updateDisplayWithVarioTelemetry", "varioCanvas pushed.");
@@ -244,6 +245,7 @@ void updateDisplayWithGPSTelemetry()
 
   gpsCanvas.clear(TFT_BLACK);
   gpsCanvas.setFont(&fonts::Font2);
+  gpsCanvas.setTextSize(2);
   gpsCanvas.setTextColor(TFT_WHITE);
   gpsCanvas.setCursor(0, 0);
   if (!globalValid)
