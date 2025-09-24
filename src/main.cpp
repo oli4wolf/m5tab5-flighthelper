@@ -14,7 +14,6 @@
 #include "config.h"         // Include configuration constants
 
 // global variables (define variables to be used throughout the program)
-uint32_t count;
 float globalPressure;
 float globalTemperature;
 SemaphoreHandle_t xSensorMutex;
@@ -30,7 +29,7 @@ double globalLongitude;
 double globalAltitude;
 unsigned long globalSatellites;
 unsigned long globalHDOP;
-bool globalValid = false; // Indicates if a valid GPS fix is available
+bool globalValid; // Indicates if a valid GPS fix is available
 double globalDirection;
 double globalSpeed; // Added for GPS speed in km/h
 uint32_t globalTime;
@@ -119,7 +118,6 @@ void setup()
   M5.Display.setTextSize(3);              // change text size
   M5.Display.print("Hello World!!!");     // display Hello World! and one line is displayed on the screen
   ESP_LOGI("main.cpp", "Hello World!!!"); // display Hello World! and one line on the serial monitor
-  count = 0;                              // initialize count
 
   // int clk, int cmd, int d0, int d1, int d2, int d3
   SD_MMC.setPins(SD_CLK_PIN, SD_CMD_PIN, SD_D0_PIN, SD_D1_PIN, SD_D2_PIN, SD_D3_PIN); // Set SD card pins: CLK=GPIO4, CMD=GPIO2, D0=GPIO15, D1=GPIO13
@@ -211,7 +209,6 @@ void loop()
     currentSatellites = globalSatellites;
     currentHDOP = globalHDOP;
     currentSpeed = globalSpeed; // Get current speed
-    currentValid = globalValid; // Get GPS fix status
     xSemaphoreGive(xGPSMutex);
   }
 
@@ -222,33 +219,5 @@ void loop()
     xSemaphoreGive(xVariometerMutex);
   }
 
-  if (!currentValid)
-  {
-    M5.Display.setCursor(0, 0);
-    M5.Display.clear(TFT_BLACK);
-    M5.Display.printf("Waiting for GPS fix...\n");
-    delay(1000);
-    return; // Skip the rest of the loop until we have a valid GPS fix
-  }
-  else
-  {
-    // Calculate tile coordinates
-    currentTileZ = calculateZoomLevel(currentSpeed, M5.Display.width(), M5.Display.height());
-    latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
-
-    // Update global tile coordinates (if needed for other tasks)
-    ESP_LOGI("main.cpp", "Attempting to take xPositionMutex. Handle: %p", (void*)xPositionMutex);
-    if (xSemaphoreTake(xPositionMutex, portMAX_DELAY) == pdTRUE)
-    { // Using GPS mutex for tile data as well
-      globalTileX = currentTileX;
-      globalTileY = currentTileY;
-      globalTileZ = currentTileZ;
-      ESP_LOGI("TileCalc", "Tile X: %d, Tile Y: %d, Zoom: %d", globalTileX, globalTileY, globalTileZ);
-      xSemaphoreGive(xPositionMutex);
-    }
-  }
-
-
-  count++;
   delay(1000);
 }

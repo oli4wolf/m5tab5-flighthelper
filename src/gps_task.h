@@ -19,7 +19,8 @@ extern SemaphoreHandle_t xGPSMutex;
 
 void initGPSTask();
 void gpsReadTask(void *pvParameters);
-void updateDisplayWithGPSTelemetry(double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed, int tileX, int tileY, int tileZ);
+void updateDisplayWithGPSTelemetry(double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed);
+void updateDisplayGPSInvalid();
 
 #ifdef __cplusplus
 }

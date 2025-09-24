@@ -56,9 +56,6 @@ void drawImageMatrixTask(void *pvParameters)
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
-  //screenBufferCanvas.setRotation(3); // Rotate counterclockwise 90 degrees (equivalent to 270 degrees clockwise)
-  //ESP_LOGI("GUI", "screenBufferCanvas.width() (after canvas rotation): %d", screenBufferCanvas.width());
-  //ESP_LOGI("GUI", "screenBufferCanvas.height() (after canvas rotation): %d", screenBufferCanvas.height());
 
   while (true)
   {
@@ -70,6 +67,11 @@ void drawImageMatrixTask(void *pvParameters)
       currentSpeed = globalSpeed;
       currentValid = globalValid;
       xSemaphoreGive(xGPSMutex);
+    }
+
+    if(!currentValid)
+    {
+      // Todo Use Testdata
     }
 
     if (currentValid)
@@ -153,13 +155,6 @@ void drawImageMatrixTask(void *pvParameters)
       screenBufferCanvas.pushSprite(-152, 128);
 
       vTaskDelay(pdMS_TO_TICKS(DRAW_IMAGE_TASK_DELAY_MS)); // Display the image for DRAW_IMAGE_TASK_DELAY_MS milliseconds
-    }
-    else
-    {
-      M5.Display.clear(TFT_BLACK);
-      M5.Display.setCursor(0, 0);
-      M5.Display.printf("Waiting for GPS fix...\n");
-      vTaskDelay(pdMS_TO_TICKS(1000)); // Wait for 1 second before retrying
     }
   }
 }

@@ -157,4 +157,5 @@ void updateDisplayWithTelemetry(float pressure, float temperature, float baroAlt
     M5.Display.printf("Temperature: %.2f C\n", temperature); // Display temperature
     M5.Display.printf("Baro Alt: %.1f m\n", baroAltitude);
     M5.Display.printf("Vario: %.1f m/s\n", verticalSpeed);
+    M5.Display.setCursor(0, 256); // Move cursor down for next section
 }

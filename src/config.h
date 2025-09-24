@@ -3,6 +3,8 @@
 #include <cstddef> // For size_t
 
 const int TILE_SIZE = 256; // Standard size for map tiles (e.g., OpenStreetMap)
+const int SCREEN_WIDTH = 720; // Width of the M5Stack screen
+const int SCREEN_HEIGHT = 1280; // Height of the M5Stack screen
 
 // Configuration
 const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality

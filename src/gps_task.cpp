@@ -3,6 +3,7 @@
 #include <TinyGPSPlus.h>
 #include <freertos/semphr.h> // Required for mutex
 #include "config.h" // Include configuration constants
+#include "tile_calculator.h"
 
 // Declare extern global variables and mutex from main.cpp
 extern double globalLatitude;
@@ -55,31 +56,33 @@ void gpsReadTask(void *pvParameters) {
                         globalTime = gps.time.value();
                         globalHDOP = gps.hdop.value();
                         globalValid = true; // GPS fix is valid
+
+                        
+
                         xSemaphoreGive(xGPSMutex);
                     }
-                    //ESP_LOGD("GPS", "Fix acquired! Lat: %.6f, Lng: %.6f, Alt: %.2f m, Sats: %lu, HDOP: %lu",
-                    //         globalLatitude, globalLongitude, globalAltitude, globalSatellites, globalHDOP);
+                    
+                    // Update display with GPS telemetry
+                    updateDisplayWithGPSTelemetry(globalLatitude, globalLongitude, globalAltitude, globalSatellites, globalHDOP, globalSpeed);
                 } else {
-                    ESP_LOGI("GPS", "Encoded data, but location is not valid yet.");
-                    globalValid = false;
+                    updateDisplayGPSInvalid();
                 }
             } else {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
             }
         }
 
-        if (gps.location.isValid()) {
-            // Serial.printf("GPS Task Count: %d, Lat: %.6f, Lng: %.6f, Alt: %.2f m, Sats: %lu, HDOP: %lu\n",
-            //               gps_count, globalLatitude, globalLongitude, globalAltitude, globalSatellites, globalHDOP); // Removed to avoid USB CDC conflict
-        } else {
-            // Serial.printf("GPS Task Count: %d, Waiting for GPS fix... (Sats: %lu, HDOP: %lu)\n", gps_count, gps.satellites.value(), gps.hdop.value()); // Removed to avoid USB CDC conflict
-        }
-        
         vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
     }
 }
 
-void updateDisplayWithGPSTelemetry(double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed, int tileX, int tileY, int tileZ){
+void updateDisplayGPSInvalid(){
+    M5.Display.setCursor(0, 1024); // Start near the bottom of a 1280px height display
+    M5.Display.fillRect(0, 1024, 720, 256, TFT_BLACK); // Clear the area for new text int32_t x, int32_t w, int32_t h
+    M5.Display.printf("Waiting for GPS fix...\n");
+}
+    
+void updateDisplayWithGPSTelemetry(double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed){
     M5.Display.setCursor(0, 1024); // Start near the bottom of a 1280px height display
     M5.Display.fillRect(0, 1024, 720, 256, TFT_BLACK); // Clear the area for new text int32_t x, int32_t y, int32_t w, int32_t h
     M5.Display.printf("Lat: %.6f\n", latitude);
@@ -88,5 +91,4 @@ void updateDisplayWithGPSTelemetry(double latitude, double longitude, double alt
     M5.Display.printf("Sats: %lu\n", satellites);
     M5.Display.printf("HDOP: %lu\n", hdop);
     M5.Display.printf("Speed: %.1f km/h\n", speed);
-    M5.Display.printf("Tile: %d/%d/%d\n", tileZ, tileX, tileY);
 }
