@@ -177,47 +177,6 @@ void setup()
 // loop function acquires values from sensors, rewrites the screen, etc.
 void loop()
 {
-  float currentPressure = 0;
-  float currentTemperature = 0;
-  double currentLatitude = 0;
-  double currentLongitude = 0;
-  double currentAltitude = 0;
-  unsigned long currentSatellites = 0;
-  unsigned long currentHDOP = 0;
-  double currentSpeed = 0;   // Added for current speed
-  bool currentValid = false; // Added for GPS fix status
-
-  int currentTileX = 0;
-  int currentTileY = 0;
-  int currentTileZ = 0;
-
-  float currentBaroAltitude = 0;
-  float currentVerticalSpeed = 0;
-
-  if (xSemaphoreTake(xSensorMutex, portMAX_DELAY) == pdTRUE)
-  {
-    currentPressure = globalPressure;
-    currentTemperature = globalTemperature;
-    xSemaphoreGive(xSensorMutex);
-  }
-
-  if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
-  {
-    currentLatitude = globalLatitude;
-    currentLongitude = globalLongitude;
-    currentAltitude = globalAltitude;
-    currentSatellites = globalSatellites;
-    currentHDOP = globalHDOP;
-    currentSpeed = globalSpeed; // Get current speed
-    xSemaphoreGive(xGPSMutex);
-  }
-
-  if (xSemaphoreTake(xVariometerMutex, portMAX_DELAY) == pdTRUE)
-  {
-    currentBaroAltitude = globalAltitude_m;
-    currentVerticalSpeed = globalVerticalSpeed_mps;
-    xSemaphoreGive(xVariometerMutex);
-  }
 
   delay(1000);
 }

@@ -25,7 +25,6 @@ SemaphoreHandle_t xVariometerMutex;
 
 // Constants for altitude calculation (standard atmosphere)
 // P0 is now defined in config.h as STANDARD_SEA_LEVEL_PRESSURE_HPA
-
 // Function to convert pressure (hPa) to altitude (meters)
 float pressureToAltitude(float pressure_hPa) {
     return ALTITUDE_CONSTANT_A * (1.0 - pow(pressure_hPa / STANDARD_SEA_LEVEL_PRESSURE_HPA, 1.0 / ALTITUDE_CONSTANT_B));
