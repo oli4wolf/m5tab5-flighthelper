@@ -1,7 +1,9 @@
 // This file will contain the implementation of GUI-related functions.
 #include <Arduino.h>
 #include "FS.h"     // SD Card ESP32
-#include "SD_MMC.h" // SD Card ESP32
+#include <cmath>    // For M_PI, sin, cos
+#define M_PI_2 (M_PI / 2.0F) // Define M_PI_2 if not already defined by cmath
+#include "SD_MMC.H" // SD Card ESP32
 #include <M5Unified.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -19,6 +21,7 @@ extern double globalLongitude;      // Declare extern here
 extern bool globalValid;            // Declare extern here
 extern double globalSpeed;          // Declare extern here
 extern double globalAltitude;       // Declare extern here
+extern double globalDirection;      // Declare extern here
 
 extern SemaphoreHandle_t xSensorMutex;
 extern float globalPressure;
@@ -36,6 +39,7 @@ M5Canvas tileCanvas(&M5.Display);         // Declare M5Canvas globally for indiv
 M5Canvas screenBufferCanvas(&M5.Display); // Declare M5Canvas globally for full screen buffer
 M5Canvas gpsCanvas(&M5.Display);
 M5Canvas varioCanvas(&M5.Display);
+M5Canvas dir_icon(&M5.Display); // Declare M5Canvas globally for direction icon
 
 // Helper function to draw a single tile, handling cache and SD loading
 void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
@@ -49,6 +53,49 @@ void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *file
   canvas.drawJpgFile(SD_MMC, filePath, 0, 0);
   file.close();
   ESP_LOGI("drawTile", "Loaded and drew Jpeg from SD: %s", filePath);
+}
+
+void initDirectionIcon()
+{
+    /*
+     * dir_icon color palette:
+     *   0: DIR_ICON_TRANS_COLOR
+     *   1: DIR_ICON_BG_COLOR
+     *   2: foreground color (DIR_ICON_COLOD_ACTIVE or DIR_ICON_COLOR_INACTIVE)
+     *   3: not used (default is TFT_WHITE)
+     */
+
+    // Allocate sprite
+    dir_icon.setColorDepth(2);
+    dir_icon.setPsram(false);
+    dir_icon.createSprite(DIR_ICON_R * 2 + 1, DIR_ICON_R * 2 + 1);
+
+    // Set palette colors
+    dir_icon.setPaletteColor(dir_icon_palette_id_trans, DIR_ICON_TRANS_COLOR);
+    dir_icon.setPaletteColor(dir_icon_palette_id_bg, DIR_ICON_BG_COLOR);
+    dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_INACTIVE);
+
+    // Draw icon
+    dir_icon.fillSprite(dir_icon_palette_id_trans); // translucent background
+    dir_icon.fillCircle(DIR_ICON_R, DIR_ICON_R, DIR_ICON_R, dir_icon_palette_id_fg);
+    dir_icon.fillCircle(DIR_ICON_R, DIR_ICON_R, DIR_ICON_R - DIR_ICON_EDGE_WIDTH,
+                        dir_icon_palette_id_bg);
+
+    int x0 = DIR_ICON_R;
+    int y0 = DIR_ICON_EDGE_WIDTH;
+    int x1 = DIR_ICON_R + (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * cos(-M_PI_2 + DIR_ICON_ANGLE);
+    int y1 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * sin(-M_PI_2 + DIR_ICON_ANGLE);
+    int x2 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * cos(-M_PI_2 + DIR_ICON_ANGLE);
+    int y2 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * sin(-M_PI_2 + DIR_ICON_ANGLE);
+
+    dir_icon.fillTriangle(x0, y0, x1, y1, x2, y2, dir_icon_palette_id_fg);
+
+    x0 = DIR_ICON_R;
+    y0 = (int)(DIR_ICON_R * 1.2);
+    dir_icon.fillTriangle(x0, y0, x1, y1, x2, y2, dir_icon_palette_id_bg);
+
+    // set center of rotation
+    dir_icon.setPivot(DIR_ICON_R, DIR_ICON_R);
 }
 
 void drawImageMatrixTask(void *pvParameters)
@@ -75,6 +122,9 @@ void drawImageMatrixTask(void *pvParameters)
   ESP_LOGI("drawImageMatrixTask", "gpsCanvas created. Width: %d, Height: %d", gpsCanvas.width(), gpsCanvas.height());
   varioCanvas.createSprite(SCREEN_WIDTH, 128);
   ESP_LOGI("drawImageMatrixTask", "varioCanvas created. Width: %d, Height: %d", varioCanvas.width(), varioCanvas.height());
+
+  initDirectionIcon(); // Initialize the direction icon once
+  ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
 
   while (true)
   {
@@ -157,19 +207,7 @@ void drawImageMatrixTask(void *pvParameters)
       int centerY = screenBufferCanvas.height() / 2;
 
       // Draw arrow head (triangle)
-      screenBufferCanvas.fillTriangle(
-          centerX, centerY - ARROW_HEAD_LENGTH / 2,
-          centerX - ARROW_HEAD_WIDTH / 2, centerY + ARROW_HEAD_LENGTH / 2,
-          centerX + ARROW_HEAD_WIDTH / 2, centerY + ARROW_HEAD_LENGTH / 2,
-          TFT_RED);
-
-      // Draw arrow shaft (line)
-      screenBufferCanvas.fillRect(
-          centerX - 1, // Thicker line
-          centerY + ARROW_HEAD_LENGTH / 2,
-          3, // Width of the shaft
-          ARROW_SHAFT_LENGTH,
-          TFT_RED);
+      drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
 
       ESP_LOGI("drawImageMatrixTask", "Pushing screenBufferCanvas to M5.Display at (-152, 128).");
       screenBufferCanvas.pushSprite(-152, 128);
@@ -234,6 +272,7 @@ void updateDisplayWithGPSTelemetry()
   double currentAltitude = 0;
   unsigned long currentSatellites;
   unsigned long currentHDOP;
+  double currentDirection = 0;
 
   if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
   {
@@ -243,6 +282,7 @@ void updateDisplayWithGPSTelemetry()
     currentAltitude = globalAltitude;
     currentSatellites = globalSatellites;
     currentHDOP = globalHDOP;
+    currentDirection = globalDirection;
     xSemaphoreGive(xGPSMutex);
   }
 
@@ -258,12 +298,15 @@ void updateDisplayWithGPSTelemetry()
     gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
     ESP_LOGW("GPS", "No valid GPS fix.");
   }
+  
   else
   {
     gpsCanvas.printf("Lat: %.6f\n", currentLatitude);
     gpsCanvas.printf("Lng: %.6f\n", currentLongitude);
     gpsCanvas.printf("Alt: %.1f m\n", currentAltitude);
     gpsCanvas.printf("Speed: %.1f km/h\n", currentSpeed);
+    gpsCanvas.printf("Sats: %lu\n", currentSatellites);
+    gpsCanvas.printf("Direction: %.1f\n", currentDirection);
     ESP_LOGI("GPS", "Valid GPS fix.");
   }
   // Adjusting the pushSprite coordinates to be visible on a typical M5Stack screen.
@@ -275,4 +318,26 @@ void updateDisplayWithGPSTelemetry()
   ESP_LOGI("updateDisplayWithGPSTelemetry", "gpsCanvas pushed.");
 
   return;
+}
+
+void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direction) {
+    // When dir icon is out of canvas
+    if (!((-DIR_ICON_R < centerX && centerX < M5.Display.width() + DIR_ICON_R) &&
+          (-DIR_ICON_R < centerY && centerY < M5.Display.height() + DIR_ICON_R)))
+    {
+        ESP_LOGD("drawDirectionIcon()", "out of canvas offset=(%d,%d)\n", centerX, centerY);
+        return;
+    }
+
+    if (globalValid)
+    {
+        dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_ACTIVE);
+    }
+    else
+    {
+        dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_INACTIVE);
+    }
+
+    dir_icon.pushRotateZoomWithAA(&canvas, centerX, centerY, direction, 1, 1,
+                                  dir_icon_palette_id_trans);
 }

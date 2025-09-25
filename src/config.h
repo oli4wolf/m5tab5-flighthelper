@@ -38,6 +38,24 @@ const int ARROW_HEAD_LENGTH = 10;
 const int ARROW_HEAD_WIDTH = 10;
 const int ARROW_SHAFT_LENGTH = 15;
 
+// Direction Icon Constants
+const int DIRECTION_ICON_RADIUS = 14;
+const int DIRECTION_ARROW_LENGTH = 10;
+const int DIRECTION_ARROW_WIDTH = 6;
+
+const int DIR_ICON_R = DIRECTION_ICON_RADIUS;
+const int DIR_ICON_EDGE_WIDTH = 3; // Example value, adjust as needed
+const float DIR_ICON_ANGLE = M_PI / 6; // Example value, adjust as needed (30 degrees)
+
+const uint16_t DIR_ICON_TRANS_COLOR = TFT_TRANSPARENT;
+const uint16_t DIR_ICON_BG_COLOR = TFT_WHITE;
+const uint16_t DIR_ICON_COLOR_INACTIVE = TFT_DARKGREY;
+const uint16_t DIR_ICON_COLOR_ACTIVE = TFT_DARKGREEN; // For active state, if needed
+
+const uint8_t dir_icon_palette_id_trans = 0;
+const uint8_t dir_icon_palette_id_bg = 1;
+const uint8_t dir_icon_palette_id_fg = 2;
+
 // Text Zone Constants (for GPS data display)
 const int TEXT_ZONE_HEIGHT = 30;
 const int TEXT_ZONE_WIDTH = 106; // Approximately M5.Display.width() / 3 for a 320px wide screen
