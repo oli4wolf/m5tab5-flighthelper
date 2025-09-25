@@ -145,17 +145,6 @@ void variometerTask(void *pvParameters) {
         }
 
         // Display update logic (without GPS or tile data)
-        //updateDisplayWithTelemetry(currentPressure, currentTemperature, currentBaroAltitude, currentVerticalSpeed);
         vTaskDelay(pdMS_TO_TICKS(VARIOMETER_TASK_DELAY_MS)); // Check more frequently than updateIntervalMs
     }
-}
-
-void updateDisplayWithTelemetry(float pressure, float temperature, float baroAltitude, float verticalSpeed){
-    M5.Display.setCursor(0, 0);
-    M5.Display.fillRect(0, 0, 720, 256, TFT_BLACK); // Clear the area for new text int32_t x, int32_t y, int32_t w, int32_t h
-    M5.Display.printf("Pressure: %.2f hPa\n", pressure);
-    M5.Display.printf("Temperature: %.2f C\n", temperature); // Display temperature
-    M5.Display.printf("Baro Alt: %.1f m\n", baroAltitude);
-    M5.Display.printf("Vario: %.1f m/s\n", verticalSpeed);
-    M5.Display.setCursor(0, 256); // Move cursor down for next section
 }

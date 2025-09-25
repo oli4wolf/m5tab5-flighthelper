@@ -13,12 +13,12 @@
 #include "config.h" // Include configuration constants
 
 // External global variables from main.cpp
-  extern SemaphoreHandle_t xGPSMutex; // Declare extern here
-  extern double globalLatitude;       // Declare extern here
-  extern double globalLongitude;      // Declare extern here
-  extern bool globalValid;            // Declare extern here
-  extern double globalSpeed;          // Declare extern here
-  extern double globalAltitude;       // Declare extern here
+extern SemaphoreHandle_t xGPSMutex; // Declare extern here
+extern double globalLatitude;       // Declare extern here
+extern double globalLongitude;      // Declare extern here
+extern bool globalValid;            // Declare extern here
+extern double globalSpeed;          // Declare extern here
+extern double globalAltitude;       // Declare extern here
 
 extern SemaphoreHandle_t xSensorMutex;
 extern float globalPressure;
@@ -67,7 +67,7 @@ void drawImageMatrixTask(void *pvParameters)
   // SCREEN_BUFFER_TILE_DIMENSION x SCREEN_BUFFER_TILE_DIMENSION conceptual tile array to store file paths
   char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_PATH_MAX_LENGTH];
 
-  tileCanvas.createSprite(TILE_SIZE, TILE_SIZE);                                                                       // Initialize M5Canvas for individual tiles
+  tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
   ESP_LOGI("drawImageMatrixTask", "tileCanvas created. Width: %d, Height: %d", tileCanvas.width(), tileCanvas.height());
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
   ESP_LOGI("drawImageMatrixTask", "screenBufferCanvas created. Width: %d, Height: %d", screenBufferCanvas.width(), screenBufferCanvas.height());
@@ -175,14 +175,13 @@ void drawImageMatrixTask(void *pvParameters)
       screenBufferCanvas.pushSprite(-152, 128);
       ESP_LOGI("drawImageMatrixTask", "screenBufferCanvas pushed.");
 
-      // Update and display text zones
-      ESP_LOGI("drawImageMatrixTask", "Calling updateDisplayWithGPSTelemetry().");
-      updateDisplayWithGPSTelemetry();
-      ESP_LOGI("drawImageMatrixTask", "Calling updateDisplayWithVarioTelemetry().");
-      updateDisplayWithVarioTelemetry();
-
       vTaskDelay(pdMS_TO_TICKS(DRAW_IMAGE_TASK_DELAY_MS)); // Display the image for DRAW_IMAGE_TASK_DELAY_MS milliseconds
     }
+    // Update and display text zones
+    ESP_LOGI("drawImageMatrixTask", "Calling updateDisplayWithGPSTelemetry().");
+    updateDisplayWithGPSTelemetry();
+    ESP_LOGI("drawImageMatrixTask", "Calling updateDisplayWithVarioTelemetry().");
+    updateDisplayWithVarioTelemetry();
   }
 }
 
@@ -233,6 +232,8 @@ void updateDisplayWithGPSTelemetry()
   double currentLongitude = 0;
   double currentSpeed = 0;
   double currentAltitude = 0;
+  unsigned long currentSatellites;
+  unsigned long currentHDOP;
 
   if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
   {
@@ -240,6 +241,8 @@ void updateDisplayWithGPSTelemetry()
     currentLongitude = globalLongitude;
     currentSpeed = globalSpeed;
     currentAltitude = globalAltitude;
+    currentSatellites = globalSatellites;
+    currentHDOP = globalHDOP;
     xSemaphoreGive(xGPSMutex);
   }
 
@@ -250,7 +253,9 @@ void updateDisplayWithGPSTelemetry()
   gpsCanvas.setCursor(0, 0);
   if (!globalValid)
   {
-    gpsCanvas.printf("Waiting for GPS fix...");
+    gpsCanvas.printf("Waiting for GPS fix...\n");
+    gpsCanvas.printf("Sats: %lu\n", currentSatellites);
+    gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
     ESP_LOGW("GPS", "No valid GPS fix.");
   }
   else

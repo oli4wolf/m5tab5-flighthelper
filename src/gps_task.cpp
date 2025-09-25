@@ -59,12 +59,7 @@ void gpsReadTask(void *pvParameters) {
 
                         xSemaphoreGive(xGPSMutex);
                     }
-                    
-                    // Update display with GPS telemetry
-                    //updateDisplayWithGPSTelemetry(globalLatitude, globalLongitude, globalAltitude, globalSatellites, globalHDOP, globalSpeed);
-                } else {
-                    //updateDisplayGPSInvalid();
-                }
+                } 
             } else {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
             }
@@ -72,21 +67,4 @@ void gpsReadTask(void *pvParameters) {
 
         vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
     }
-}
-
-void updateDisplayGPSInvalid(){
-    M5.Display.setCursor(0, 1024); // Start near the bottom of a 1280px height display
-    M5.Display.fillRect(0, 1024, 720, 256, TFT_BLACK); // Clear the area for new text int32_t x, int32_t w, int32_t h
-    M5.Display.printf("Waiting for GPS fix...\n");
-}
-    
-void updateDisplayWithGPSTelemetry(double latitude, double longitude, double altitude, unsigned long satellites, unsigned long hdop, double speed){
-    M5.Display.setCursor(0, 1024); // Start near the bottom of a 1280px height display
-    M5.Display.fillRect(0, 1024, 720, 256, TFT_BLACK); // Clear the area for new text int32_t x, int32_t y, int32_t w, int32_t h
-    M5.Display.printf("Lat: %.6f\n", latitude);
-    M5.Display.printf("Lng: %.6f\n", longitude);
-    M5.Display.printf("Alt: %.1f m\n", altitude);
-    M5.Display.printf("Sats: %lu\n", satellites);
-    M5.Display.printf("HDOP: %lu\n", hdop);
-    M5.Display.printf("Speed: %.1f km/h\n", speed);
 }
