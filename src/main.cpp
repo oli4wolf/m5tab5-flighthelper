@@ -114,6 +114,7 @@ void setup()
   initGPSTask();        // Initialize the GPS task components
   initVariometerTask(); // Initialize the variometer task components
   initButtonMonitorTask(); // Initialize the button monitor task components
+  initSoundButton();     // Initialize the sound button components
 
   xSensorMutex = xSemaphoreCreateMutex();     // Initialize the sensor mutex
   xGPSMutex = xSemaphoreCreateMutex();        // Initialize the GPS mutex

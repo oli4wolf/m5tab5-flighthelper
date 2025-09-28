@@ -37,6 +37,6 @@ extern M5Canvas dir_icon; // Declare dir_icon globally
 void updateDisplayWithGPSTelemetry();
 void updateDisplayWithVarioTelemetry();
 void initDirectionIcon(); // Declare the initialization function
-// void initSoundButton(); // Declare the initialization function for the sound button - moved to main.cpp
+void initSoundButton(); // Declare the initialization function for the sound button - moved to main.cpp
 
 #endif // GUI_H
