@@ -8,6 +8,7 @@ const int SCREEN_HEIGHT = 1280; // Height of the M5Stack screen
 
 // Configuration
 const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality
+extern bool globalSoundEnabled; // Global variable to control sound output at runtime
 
 // SD Card variables
 const int SD_CMD_PIN = 44; // GPIO number for SD card CMD pin

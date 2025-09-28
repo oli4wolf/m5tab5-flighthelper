@@ -15,6 +15,7 @@
 #include "config.h" // Include configuration constants
 
 // External global variables from main.cpp
+extern bool globalSoundEnabled; // Declare global sound enable flag
 extern SemaphoreHandle_t xGPSMutex; // Declare extern here
 extern double globalLatitude;       // Declare extern here
 extern double globalLongitude;      // Declare extern here
@@ -125,6 +126,8 @@ void drawImageMatrixTask(void *pvParameters)
 
   initDirectionIcon(); // Initialize the direction icon once
   ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
+  initSoundButton(); // Initialize the sound button once
+  ESP_LOGI("drawImageMatrixTask", "Sound button initialized.");
 
   while (true)
   {
@@ -208,10 +211,25 @@ void drawImageMatrixTask(void *pvParameters)
 
       // Draw arrow head (triangle)
       drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
+      drawSoundButton(screenBufferCanvas); // Draw the sound button
 
       ESP_LOGI("drawImageMatrixTask", "Pushing screenBufferCanvas to M5.Display at (-152, 128).");
       screenBufferCanvas.pushSprite(-152, 128);
       ESP_LOGI("drawImageMatrixTask", "screenBufferCanvas pushed.");
+
+      // Handle touch input for the sound button
+      M5.update(); // Update M5Unified internal states for touch
+      // Handle touch input for the sound button
+      M5.update(); // Update M5Unified internal states for touch
+      // Handle touch input for the sound button
+      M5.update(); // Update M5Unified internal states for touch
+      if (M5.Touch.isEnabled()) { // Check if touch is enabled
+          // Handle physical button input for the sound toggle
+          if (M5.BtnC.wasPressed()) { // Assuming BtnC is on the right side
+              globalSoundEnabled = !globalSoundEnabled;
+              ESP_LOGI("SoundButton", "Physical button C pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
+          }
+      }
 
       vTaskDelay(pdMS_TO_TICKS(DRAW_IMAGE_TASK_DELAY_MS)); // Display the image for DRAW_IMAGE_TASK_DELAY_MS milliseconds
     }
@@ -336,4 +354,39 @@ void drawDirectionIcon(M5Canvas &canvas, int centerX, int centerY, double direct
 
   dir_icon.pushRotateZoomWithAA(&canvas, centerX, centerY, direction, 1, 1,
                                 dir_icon_palette_id_trans);
+}
+
+// Sound button variables
+static M5Canvas soundButtonCanvas(&M5.Display);
+static int soundButtonX;
+static int soundButtonY;
+static int soundButtonWidth;
+static int soundButtonHeight;
+
+void initSoundButton() {
+  soundButtonWidth = 80; // Example width
+  soundButtonHeight = 40; // Example height
+  soundButtonX = M5.Display.width() - soundButtonWidth - 10; // 10px from right edge
+  soundButtonY = 10; // 10px from top edge
+
+  soundButtonCanvas.createSprite(soundButtonWidth, soundButtonHeight);
+  soundButtonCanvas.setFont(&fonts::Font2);
+  soundButtonCanvas.setTextSize(1);
+  ESP_LOGI("SoundButton", "Sound button initialized. X: %d, Y: %d, W: %d, H: %d", soundButtonX, soundButtonY, soundButtonWidth, soundButtonHeight);
+}
+
+void drawSoundButton(M5Canvas& canvas) {
+  soundButtonCanvas.clear(globalSoundEnabled ? TFT_DARKGREEN : TFT_DARKGREY);
+  soundButtonCanvas.setTextColor(TFT_WHITE);
+  soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum
+  soundButtonCanvas.drawString(globalSoundEnabled ? "Sound ON" : "Sound OFF", soundButtonWidth / 2, soundButtonHeight / 2);
+  soundButtonCanvas.pushSprite(&canvas, soundButtonX, soundButtonY);
+}
+
+void handleSoundButtonPress(int x, int y) {
+  if (x >= soundButtonX && x <= (soundButtonX + soundButtonWidth) &&
+      y >= soundButtonY && y <= (soundButtonY + soundButtonHeight)) {
+      globalSoundEnabled = !globalSoundEnabled;
+      ESP_LOGI("SoundButton", "Sound button pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
+  }
 }

@@ -11,6 +11,7 @@
 extern float globalPressure;
 extern float globalTemperature; // Added for global temperature
 extern SemaphoreHandle_t xSensorMutex;
+extern bool globalSoundEnabled; // Declare global sound enable flag
 
 // Moving average filter variables
 static std::vector<float> altitudeBuffer;
@@ -101,7 +102,7 @@ void variometerTask(void *pvParameters) {
             }
 
             // Tone generation logic
-            if (SPEAKER_ENABLED) {
+            if (SPEAKER_ENABLED && globalSoundEnabled) {
                 if (verticalSpeed > altitudeChangeThreshold_mps) {
                     // Rising tone: higher frequency, frequency increases with climb rate
                     int frequency = RISING_TONE_BASE_FREQ_HZ + (int)(verticalSpeed * RISING_TONE_MULTIPLIER_HZ_PER_MPS);
@@ -115,6 +116,8 @@ void variometerTask(void *pvParameters) {
                     // Stable or minor changes, no tone
                     M5.Speaker.stop();
                 }
+            } else {
+                M5.Speaker.stop(); // Ensure speaker is off if sound is disabled
             }
 
             previousAltitude = averagedAltitude; // Update previous altitude with the averaged value

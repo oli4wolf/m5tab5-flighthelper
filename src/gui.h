@@ -18,6 +18,7 @@ extern "C" {
 void drawImageMatrixTask(void *pvParameters);
 bool drawJpgFromSD(const char* filePath);
 void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direction);
+void drawSoundButton(M5Canvas& canvas);
 
 #ifdef __cplusplus
 } // extern "C"
@@ -32,5 +33,6 @@ extern M5Canvas dir_icon; // Declare dir_icon globally
 void updateDisplayWithGPSTelemetry();
 void updateDisplayWithVarioTelemetry();
 void initDirectionIcon(); // Declare the initialization function
+void initSoundButton(); // Declare the initialization function for the sound button
 
 #endif // GUI_H

@@ -14,6 +14,7 @@
 #include "config.h"         // Include configuration constants
 
 // global variables (define variables to be used throughout the program)
+bool globalSoundEnabled = true; // Define global sound enable flag
 float globalPressure;
 float globalTemperature;
 SemaphoreHandle_t xSensorMutex;
@@ -110,6 +111,7 @@ void setup()
   initSensorTask();     // Initialize the sensor task components
   initGPSTask();        // Initialize the GPS task components
   initVariometerTask(); // Initialize the variometer task components
+  initSoundButton();    // Initialize the sound button components
 
   xSensorMutex = xSemaphoreCreateMutex();     // Initialize the sensor mutex
   xGPSMutex = xSemaphoreCreateMutex();        // Initialize the GPS mutex
