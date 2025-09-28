@@ -1,9 +1,9 @@
 // This file will contain the implementation of GUI-related functions.
 #include <Arduino.h>
-#include "FS.h"     // SD Card ESP32
-#include <cmath>    // For M_PI, sin, cos
+#include "FS.h"              // SD Card ESP32
+#include <cmath>             // For M_PI, sin, cos
 #define M_PI_2 (M_PI / 2.0F) // Define M_PI_2 if not already defined by cmath
-#include "SD_MMC.H" // SD Card ESP32
+#include "SD_MMC.H"          // SD Card ESP32
 #include <M5Unified.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -57,45 +57,45 @@ void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *file
 
 void initDirectionIcon()
 {
-    /*
-     * dir_icon color palette:
-     *   0: DIR_ICON_TRANS_COLOR
-     *   1: DIR_ICON_BG_COLOR
-     *   2: foreground color (DIR_ICON_COLOD_ACTIVE or DIR_ICON_COLOR_INACTIVE)
-     *   3: not used (default is TFT_WHITE)
-     */
+  /*
+   * dir_icon color palette:
+   *   0: DIR_ICON_TRANS_COLOR
+   *   1: DIR_ICON_BG_COLOR
+   *   2: foreground color (DIR_ICON_COLOD_ACTIVE or DIR_ICON_COLOR_INACTIVE)
+   *   3: not used (default is TFT_WHITE)
+   */
 
-    // Allocate sprite
-    dir_icon.setColorDepth(2);
-    dir_icon.setPsram(false);
-    dir_icon.createSprite(DIR_ICON_R * 2 + 1, DIR_ICON_R * 2 + 1);
+  // Allocate sprite
+  dir_icon.setColorDepth(2);
+  dir_icon.setPsram(false);
+  dir_icon.createSprite(DIR_ICON_R * 2 + 1, DIR_ICON_R * 2 + 1);
 
-    // Set palette colors
-    dir_icon.setPaletteColor(dir_icon_palette_id_trans, DIR_ICON_TRANS_COLOR);
-    dir_icon.setPaletteColor(dir_icon_palette_id_bg, DIR_ICON_BG_COLOR);
-    dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_INACTIVE);
+  // Set palette colors
+  dir_icon.setPaletteColor(dir_icon_palette_id_trans, DIR_ICON_TRANS_COLOR);
+  dir_icon.setPaletteColor(dir_icon_palette_id_bg, DIR_ICON_BG_COLOR);
+  dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_INACTIVE);
 
-    // Draw icon
-    dir_icon.fillSprite(dir_icon_palette_id_trans); // translucent background
-    dir_icon.fillCircle(DIR_ICON_R, DIR_ICON_R, DIR_ICON_R, dir_icon_palette_id_fg);
-    dir_icon.fillCircle(DIR_ICON_R, DIR_ICON_R, DIR_ICON_R - DIR_ICON_EDGE_WIDTH,
-                        dir_icon_palette_id_bg);
+  // Draw icon
+  dir_icon.fillSprite(dir_icon_palette_id_trans); // translucent background
+  dir_icon.fillCircle(DIR_ICON_R, DIR_ICON_R, DIR_ICON_R, dir_icon_palette_id_fg);
+  dir_icon.fillCircle(DIR_ICON_R, DIR_ICON_R, DIR_ICON_R - DIR_ICON_EDGE_WIDTH,
+                      dir_icon_palette_id_bg);
 
-    int x0 = DIR_ICON_R;
-    int y0 = DIR_ICON_EDGE_WIDTH;
-    int x1 = DIR_ICON_R + (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * cos(-M_PI_2 + DIR_ICON_ANGLE);
-    int y1 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * sin(-M_PI_2 + DIR_ICON_ANGLE);
-    int x2 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * cos(-M_PI_2 + DIR_ICON_ANGLE);
-    int y2 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * sin(-M_PI_2 + DIR_ICON_ANGLE);
+  int x0 = DIR_ICON_R;
+  int y0 = DIR_ICON_EDGE_WIDTH;
+  int x1 = DIR_ICON_R + (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * cos(-M_PI_2 + DIR_ICON_ANGLE);
+  int y1 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * sin(-M_PI_2 + DIR_ICON_ANGLE);
+  int x2 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * cos(-M_PI_2 + DIR_ICON_ANGLE);
+  int y2 = DIR_ICON_R - (DIR_ICON_R - DIR_ICON_EDGE_WIDTH) * sin(-M_PI_2 + DIR_ICON_ANGLE);
 
-    dir_icon.fillTriangle(x0, y0, x1, y1, x2, y2, dir_icon_palette_id_fg);
+  dir_icon.fillTriangle(x0, y0, x1, y1, x2, y2, dir_icon_palette_id_fg);
 
-    x0 = DIR_ICON_R;
-    y0 = (int)(DIR_ICON_R * 1.2);
-    dir_icon.fillTriangle(x0, y0, x1, y1, x2, y2, dir_icon_palette_id_bg);
+  x0 = DIR_ICON_R;
+  y0 = (int)(DIR_ICON_R * 1.2);
+  dir_icon.fillTriangle(x0, y0, x1, y1, x2, y2, dir_icon_palette_id_bg);
 
-    // set center of rotation
-    dir_icon.setPivot(DIR_ICON_R, DIR_ICON_R);
+  // set center of rotation
+  dir_icon.setPivot(DIR_ICON_R, DIR_ICON_R);
 }
 
 void drawImageMatrixTask(void *pvParameters)
@@ -272,7 +272,6 @@ void updateDisplayWithGPSTelemetry()
   double currentAltitude = 0;
   unsigned long currentSatellites;
   unsigned long currentHDOP;
-  double currentDirection = 0;
 
   if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
   {
@@ -282,7 +281,6 @@ void updateDisplayWithGPSTelemetry()
     currentAltitude = globalAltitude;
     currentSatellites = globalSatellites;
     currentHDOP = globalHDOP;
-    currentDirection = globalDirection;
     xSemaphoreGive(xGPSMutex);
   }
 
@@ -298,46 +296,44 @@ void updateDisplayWithGPSTelemetry()
     gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
     ESP_LOGW("GPS", "No valid GPS fix.");
   }
-  
+
   else
   {
     gpsCanvas.printf("Lat: %.6f\n", currentLatitude);
     gpsCanvas.printf("Lng: %.6f\n", currentLongitude);
     gpsCanvas.printf("Alt: %.1f m\n", currentAltitude);
     gpsCanvas.printf("Speed: %.1f km/h\n", currentSpeed);
-    gpsCanvas.printf("Sats: %lu\n", currentSatellites);
-    gpsCanvas.printf("Direction: %.1f\n", currentDirection);
-    ESP_LOGI("GPS", "Valid GPS fix.");
   }
   // Adjusting the pushSprite coordinates to be visible on a typical M5Stack screen.
   // Assuming screen height is M5.Display.height().
   // Place gpsCanvas at the bottom of the screen.
   int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
-  ESP_LOGI("updateDisplayWithGPSTelemetry", "Pushing gpsCanvas to M5.Display at (0, %d).", gpsCanvasY);
+  ESP_LOGD("updateDisplayWithGPSTelemetry", "Pushing gpsCanvas to M5.Display at (0, %d).", gpsCanvasY);
   gpsCanvas.pushSprite(0, gpsCanvasY);
-  ESP_LOGI("updateDisplayWithGPSTelemetry", "gpsCanvas pushed.");
+  ESP_LOGD("updateDisplayWithGPSTelemetry", "gpsCanvas pushed.");
 
   return;
 }
 
-void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direction) {
-    // When dir icon is out of canvas
-    if (!((-DIR_ICON_R < centerX && centerX < M5.Display.width() + DIR_ICON_R) &&
-          (-DIR_ICON_R < centerY && centerY < M5.Display.height() + DIR_ICON_R)))
-    {
-        ESP_LOGD("drawDirectionIcon()", "out of canvas offset=(%d,%d)\n", centerX, centerY);
-        return;
-    }
+void drawDirectionIcon(M5Canvas &canvas, int centerX, int centerY, double direction)
+{
+  // When dir icon is out of canvas
+  if (!((-DIR_ICON_R < centerX && centerX < M5.Display.width() + DIR_ICON_R) &&
+        (-DIR_ICON_R < centerY && centerY < M5.Display.height() + DIR_ICON_R)))
+  {
+    ESP_LOGD("drawDirectionIcon()", "out of canvas offset=(%d,%d)\n", centerX, centerY);
+    return;
+  }
 
-    if (globalValid)
-    {
-        dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_ACTIVE);
-    }
-    else
-    {
-        dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_INACTIVE);
-    }
+  if (globalValid)
+  {
+    dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_ACTIVE);
+  }
+  else
+  {
+    dir_icon.setPaletteColor(dir_icon_palette_id_fg, DIR_ICON_COLOR_INACTIVE);
+  }
 
-    dir_icon.pushRotateZoomWithAA(&canvas, centerX, centerY, direction, 1, 1,
-                                  dir_icon_palette_id_trans);
+  dir_icon.pushRotateZoomWithAA(&canvas, centerX, centerY, direction, 1, 1,
+                                dir_icon_palette_id_trans);
 }
