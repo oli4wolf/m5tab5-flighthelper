@@ -11,6 +11,7 @@
 #include "tile_calculator.h" // Include the new tile calculator header
 #include "gui.h"             // Include the new GUI header
 #include "variometer_task.h" // Include the new variometer task header
+#include "button_task.h"     // Include the new button task header
 #include "config.h"         // Include configuration constants
 
 // global variables (define variables to be used throughout the program)
@@ -59,6 +60,7 @@ extern const int SENSOR_TASK_STACK_SIZE;
 extern const int GPS_TASK_STACK_SIZE;
 extern const int VARIOMETER_TASK_STACK_SIZE;
 extern const int IMAGE_MATRIX_TASK_STACK_SIZE;
+extern const int BUTTON_TASK_STACK_SIZE; // New: Stack size for button monitoring task
 
 // Function to draw a Jpeg image from SD card
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
@@ -111,7 +113,7 @@ void setup()
   initSensorTask();     // Initialize the sensor task components
   initGPSTask();        // Initialize the GPS task components
   initVariometerTask(); // Initialize the variometer task components
-  initSoundButton();    // Initialize the sound button components
+  initButtonMonitorTask(); // Initialize the button monitor task components
 
   xSensorMutex = xSemaphoreCreateMutex();     // Initialize the sensor mutex
   xGPSMutex = xSemaphoreCreateMutex();        // Initialize the GPS mutex
@@ -161,8 +163,18 @@ void setup()
       VARIOMETER_TASK_STACK_SIZE,                  // Stack size (bytes)
       NULL,                  // Parameter to pass to function
       1,                     // Task priority (0 to configMAX_PRIORITIES - 1)
-      NULL,                  // Task handle
-      APP_CPU_NUM);          // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
+      NULL,             // Task handle
+      APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
+
+  // Create and start the button monitoring task
+  xTaskCreatePinnedToCore(
+      buttonMonitorTask,   // Task function
+      "ButtonMonitorTask", // Name of task
+      BUTTON_TASK_STACK_SIZE,             // Stack size (bytes)
+      NULL,             // Parameter to pass to function
+      1,                // Task priority (0 to configMAX_PRIORITIES - 1)
+      NULL,             // Task handle
+      APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
 
   // Create and start the image drawing task
   xTaskCreatePinnedToCore(

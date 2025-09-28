@@ -146,8 +146,8 @@ void drawImageMatrixTask(void *pvParameters)
 
   initDirectionIcon(); // Initialize the direction icon once
   ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
-  initSoundButton(); // Initialize the sound button once
-  ESP_LOGI("drawImageMatrixTask", "Sound button initialized.");
+  // initSoundButton(); // Initialize the sound button once - moved to main.cpp
+  // ESP_LOGI("drawImageMatrixTask", "Sound button initialized.");
 
   while (true)
   {
@@ -252,18 +252,8 @@ void drawImageMatrixTask(void *pvParameters)
       }
 
       // Handle touch input for the sound button
-      M5.update(); // Update M5Unified internal states for touch
-      // Handle touch input for the sound button
-      M5.update(); // Update M5Unified internal states for touch
-      // Handle touch input for the sound button
-      M5.update(); // Update M5Unified internal states for touch
-      if (M5.Touch.isEnabled()) { // Check if touch is enabled
-          // Handle physical button input for the sound toggle
-          if (M5.BtnC.wasPressed()) { // Assuming BtnC is on the right side
-              globalSoundEnabled = !globalSoundEnabled;
-              ESP_LOGI("SoundButton", "Physical button C pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
-          }
-      }
+      // Button handling moved to a dedicated FreeRTOS task (buttonMonitorTask)
+      // M5.update() and M5.BtnC.wasPressed() are now handled there.
 
       vTaskDelay(pdMS_TO_TICKS(DRAW_IMAGE_TASK_DELAY_MS)); // Display the image for DRAW_IMAGE_TASK_DELAY_MS milliseconds
     }

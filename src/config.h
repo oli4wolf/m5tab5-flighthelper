@@ -23,6 +23,8 @@ const int SENSOR_TASK_STACK_SIZE = 8192;
 const int GPS_TASK_STACK_SIZE = 4096;
 const int VARIOMETER_TASK_STACK_SIZE = 4096;
 const int IMAGE_MATRIX_TASK_STACK_SIZE = 8192;
+const int BUTTON_TASK_STACK_SIZE = 2048; // New: Stack size for button monitoring task
+const int BUTTON_TASK_DELAY_MS = 50;    // New: Delay for button monitoring task
 
 // GUI Constants
 const size_t TILE_CACHE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB cache
