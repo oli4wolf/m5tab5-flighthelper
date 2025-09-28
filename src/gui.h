@@ -10,9 +10,13 @@
 #include <map>
 #include <string>
 #include <freertos/semphr.h> // For SemaphoreHandle_t
+#include "config.h" // For TILE_PATH_MAX_LENGTH
 
 extern "C" {
 #endif
+
+extern char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH];
+extern char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH];
 
 // C-linkage function declarations
 void drawImageMatrixTask(void *pvParameters);

@@ -42,9 +42,20 @@ M5Canvas gpsCanvas(&M5.Display);
 M5Canvas varioCanvas(&M5.Display);
 M5Canvas dir_icon(&M5.Display); // Declare M5Canvas globally for direction icon
 
+// Define globalCurrentTilePath
+char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH] = "";
+char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH] = "";
+
 // Helper function to draw a single tile, handling cache and SD loading
 void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
 {
+  // Check if the requested tile is already loaded
+  if (strcmp(globalLastDrawnTilePath, filePath) == 0)
+  {
+    ESP_LOGI("drawTile", "Tile already loaded: %s", filePath);
+    return;
+  }
+
   File file = SD_MMC.open(filePath);
   if (!file)
   {
@@ -54,6 +65,10 @@ void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *file
   canvas.drawJpgFile(SD_MMC, filePath, 0, 0);
   file.close();
   ESP_LOGI("drawTile", "Loaded and drew Jpeg from SD: %s", filePath);
+
+  // Update the globalCurrentTilePath
+  strncpy(globalLastDrawnTilePath, filePath, TILE_PATH_MAX_LENGTH - 1);
+  globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0'; // Ensure null-termination
 }
 
 void initDirectionIcon()
@@ -112,6 +127,11 @@ void drawImageMatrixTask(void *pvParameters)
   double currentSpeed = 0;
   bool currentValid = false;
 
+  // Store previous tile coordinates to detect changes
+  int prevTileX = -1;
+  int prevTileY = -1;
+  int prevTileZ = -1;
+
   // SCREEN_BUFFER_TILE_DIMENSION x SCREEN_BUFFER_TILE_DIMENSION conceptual tile array to store file paths
   char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_PATH_MAX_LENGTH];
 
@@ -151,9 +171,6 @@ void drawImageMatrixTask(void *pvParameters)
       // Calculate tile coordinates
       currentTileZ = calculateZoomLevel(currentSpeed, M5.Display.width(), M5.Display.height());
       latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
-      int pixelOffsetX = 0;
-      int pixelOffsetY = 0;
-      latLngToPixelOffset(currentLatitude, currentLongitude, currentTileZ, &pixelOffsetX, &pixelOffsetY);
 
       // Update global tile coordinates
       if (xSemaphoreTake(xPositionMutex, portMAX_DELAY) == pdTRUE)
@@ -165,57 +182,74 @@ void drawImageMatrixTask(void *pvParameters)
         xSemaphoreGive(xPositionMutex);
       }
 
-      // Calculate the top-left coordinates for the drawing grid
-      // The central tile (globalTileX, globalTileY) will be at index [DRAW_GRID_CENTER_OFFSET][DRAW_GRID_CENTER_OFFSET] in the DRAW_GRID_DIMENSION x DRAW_GRID_DIMENSION array
-      int conceptualGridStartX = currentTileX - DRAW_GRID_CENTER_OFFSET;
-      int conceptualGridStartY = currentTileY - DRAW_GRID_CENTER_OFFSET;
-
-      // Populate the TILE_GRID_DIMENSION x TILE_GRID_DIMENSION tilePaths array
-      for (int y = 0; y < SCREEN_BUFFER_TILE_DIMENSION; ++y)
+      // Only redraw if the center tile has changed
+      if (currentTileX != prevTileX || currentTileY != prevTileY || currentTileZ != prevTileZ)
       {
-        for (int x = 0; x < SCREEN_BUFFER_TILE_DIMENSION; ++x)
+        int pixelOffsetX = 0;
+        int pixelOffsetY = 0;
+        latLngToPixelOffset(currentLatitude, currentLongitude, currentTileZ, &pixelOffsetX, &pixelOffsetY);
+
+        // Calculate the top-left coordinates for the drawing grid
+        // The central tile (globalTileX, globalTileY) will be at index [DRAW_GRID_CENTER_OFFSET][DRAW_GRID_CENTER_OFFSET] in the DRAW_GRID_DIMENSION x DRAW_GRID_DIMENSION array
+        int conceptualGridStartX = currentTileX - DRAW_GRID_CENTER_OFFSET;
+        int conceptualGridStartY = currentTileY - DRAW_GRID_CENTER_OFFSET;
+
+        // Populate the TILE_GRID_DIMENSION x TILE_GRID_DIMENSION tilePaths array
+        for (int y = 0; y < SCREEN_BUFFER_TILE_DIMENSION; ++y)
         {
-          int tileToLoadX = currentTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
-          int tileToLoadY = currentTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
-          sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", globalTileZ, tileToLoadX, tileToLoadY);
+          for (int x = 0; x < SCREEN_BUFFER_TILE_DIMENSION; ++x)
+          {
+            int tileToLoadX = currentTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
+            int tileToLoadY = currentTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
+            sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", globalTileZ, tileToLoadX, tileToLoadY);
+            if (x == SCREEN_BUFFER_CENTER_OFFSET && y == SCREEN_BUFFER_CENTER_OFFSET) {
+                strncpy(globalCurrentCenterTilePath, tilePaths[y][x], TILE_PATH_MAX_LENGTH - 1);
+                globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
+            }
+          }
         }
-      }
 
-      // Calculate the drawing origin so that the GPS coordinate (pixelOffsetX, pixelOffsetY within its tile)
-      // is centered on the screen.
-      // The tile containing the GPS coordinate is (currentTileX, currentTileY).
-      // The top-left corner of this tile should be drawn at:
-      // (screenBufferCanvas.width() / 2 - pixelOffsetX, screenBufferCanvas.height() / 2 - pixelOffsetY)
-      int drawOriginX = (screenBufferCanvas.width() / 2) - pixelOffsetX;
-      int drawOriginY = (screenBufferCanvas.height() / 2) - pixelOffsetY;
+        // Calculate the drawing origin so that the GPS coordinate (pixelOffsetX, pixelOffsetY within its tile)
+        // is centered on the screen.
+        // The tile containing the GPS coordinate is (currentTileX, currentTileY).
+        // The top-left corner of this tile should be drawn at:
+        // (screenBufferCanvas.width() / 2 - pixelOffsetX, screenBufferCanvas.height() / 2 - pixelOffsetY)
+        int drawOriginX = (screenBufferCanvas.width() / 2) - pixelOffsetX;
+        int drawOriginY = (screenBufferCanvas.height() / 2) - pixelOffsetY;
 
-      screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
-      ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
-      // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
-      for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset)
-      {
-        for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset)
+        screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
+        ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
+        // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
+        for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset)
         {
-          int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-          int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-          tileCanvas.clear(); // Clear the individual tile canvas
-          drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
-                   globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
-          tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
+          for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset)
+          {
+            int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
+            int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
+            tileCanvas.clear(); // Clear the individual tile canvas
+            drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
+                     globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+            tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
+          }
         }
+
+        // Draw a red point at the GPS fix location (center of the screen) on the screen buffer
+        int centerX = screenBufferCanvas.width() / 2;
+        int centerY = screenBufferCanvas.height() / 2;
+
+        // Draw arrow head (triangle)
+        drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
+        drawSoundButton(screenBufferCanvas); // Draw the sound button
+
+        ESP_LOGI("drawImageMatrixTask", "Pushing screenBufferCanvas to M5.Display at (-152, 128).");
+        screenBufferCanvas.pushSprite(-152, 128);
+        ESP_LOGI("drawImageMatrixTask", "screenBufferCanvas pushed.");
+
+        // Update previous tile coordinates
+        prevTileX = currentTileX;
+        prevTileY = currentTileY;
+        prevTileZ = currentTileZ;
       }
-
-      // Draw a red point at the GPS fix location (center of the screen) on the screen buffer
-      int centerX = screenBufferCanvas.width() / 2;
-      int centerY = screenBufferCanvas.height() / 2;
-
-      // Draw arrow head (triangle)
-      drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
-      drawSoundButton(screenBufferCanvas); // Draw the sound button
-
-      ESP_LOGI("drawImageMatrixTask", "Pushing screenBufferCanvas to M5.Display at (-152, 128).");
-      screenBufferCanvas.pushSprite(-152, 128);
-      ESP_LOGI("drawImageMatrixTask", "screenBufferCanvas pushed.");
 
       // Handle touch input for the sound button
       M5.update(); // Update M5Unified internal states for touch
