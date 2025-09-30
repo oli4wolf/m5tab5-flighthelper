@@ -153,7 +153,7 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
   int drawOriginY = (screenBufferCanvas.height() / 2) - pixelOffsetY;
 
   screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
-  ESP_LOGI("updateTiles", "Performing full redraw.");
+  ESP_LOGD("updateTiles", "Performing full redraw.");
   // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
   for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset)
   {
@@ -176,9 +176,8 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
   drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
   // drawSoundButton(screenBufferCanvas); // Sound button now drawn directly to M5.Display
 
-  ESP_LOGI("updateTiles", "Pushing screenBufferCanvas to M5.Display at (-152, 128).");
   screenBufferCanvas.pushSprite(-152, 128);
-  ESP_LOGI("updateTiles", "screenBufferCanvas pushed.");
+  ESP_LOGD("updateTiles", "screenBufferCanvas pushed.");
 }
 
 
@@ -238,7 +237,7 @@ void drawImageMatrixTask(void *pvParameters)
         globalTileX = currentTileX;
         globalTileY = currentTileY;
         globalTileZ = currentTileZ;
-        ESP_LOGI("TileCalc", "Task Tile X: %d, Tile Y: %d, Zoom: %d", globalTileX, globalTileY, globalTileZ);
+        ESP_LOGV("TileCalc", "Task Tile X: %d, Tile Y: %d, Zoom: %d", globalTileX, globalTileY, globalTileZ);
         xSemaphoreGive(xPositionMutex);
       }
 
@@ -272,19 +271,16 @@ void drawImageMatrixTask(void *pvParameters)
 
     if ((uxBits & GUI_EVENT_GPS_DATA_READY) != 0)
     {
-      ESP_LOGI("drawImageMatrixTask", "Calling updateDisplayWithGPSTelemetry().");
       updateDisplayWithGPSTelemetry();
     }
 
     if ((uxBits & GUI_EVENT_VARIO_DATA_READY) != 0)
     {
-      ESP_LOGI("drawImageMatrixTask", "Calling updateDisplayWithVarioTelemetry().");
       updateDisplayWithVarioTelemetry();
     }
 
     if ((uxBits & GUI_EVENT_SOUND_BUTTON_READY) != 0)
     {
-      ESP_LOGI("drawImageMatrixTask", "Calling drawSoundButton().");
       drawSoundButton(); // Draw directly to the main display
     }
 
@@ -295,7 +291,7 @@ void drawImageMatrixTask(void *pvParameters)
 // Implementations for text zone update functions
 void updateDisplayWithVarioTelemetry()
 {
-  ESP_LOGI("updateDisplayWithVarioTelemetry", "Task started.");
+  ESP_LOGD("updateDisplayWithVarioTelemetry", "Task started.");
   float currentPressure = 0;
   float currentTemperature = 0;
   float currentBaroAltitude = 0;
@@ -324,9 +320,7 @@ void updateDisplayWithVarioTelemetry()
   varioCanvas.printf("Temperature: %.1f C\n", currentTemperature);
   varioCanvas.printf("Altitude: %.1f m\n", currentBaroAltitude);
   varioCanvas.printf("Vertical Speed: %.1f m/s\n", currentVerticalSpeed);
-  ESP_LOGI("updateDisplayWithVarioTelemetry", "Pushing varioCanvas to M5.Display at (0, 0).");
   varioCanvas.pushSprite(0, 0);
-  ESP_LOGI("updateDisplayWithVarioTelemetry", "varioCanvas pushed.");
 
   return;
 }
@@ -334,7 +328,7 @@ void updateDisplayWithVarioTelemetry()
 // Implementations for text zone update functions
 void updateDisplayWithGPSTelemetry()
 {
-  ESP_LOGI("updateDisplayWithGPSTelemetry", "Task started.");
+  ESP_LOGD("updateDisplayWithGPSTelemetry", "Task started.");
   double currentLatitude = 0;
   double currentLongitude = 0;
   double currentSpeed = 0;
@@ -377,9 +371,7 @@ void updateDisplayWithGPSTelemetry()
   // Assuming screen height is M5.Display.height().
   // Place gpsCanvas at the bottom of the screen.
   int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
-  ESP_LOGD("updateDisplayWithGPSTelemetry", "Pushing gpsCanvas to M5.Display at (0, %d).", gpsCanvasY);
   gpsCanvas.pushSprite(0, gpsCanvasY);
-  ESP_LOGD("updateDisplayWithGPSTelemetry", "gpsCanvas pushed.");
 
   return;
 }
@@ -424,11 +416,12 @@ void initSoundButton()
   soundButtonCanvas.createSprite(soundButtonWidth, soundButtonHeight);
   soundButtonCanvas.setFont(&fonts::Font2);
   soundButtonCanvas.setTextSize(1);
-  ESP_LOGI("SoundButton", "Sound button initialized. X: %d, Y: %d, W: %d, H: %d", soundButtonX, soundButtonY, soundButtonWidth, soundButtonHeight);
+  ESP_LOGE("SoundButton", "initSoundButton() called. X: %d, Y: %d, W: %d, H: %d", soundButtonX, soundButtonY, soundButtonWidth, soundButtonHeight);
 }
 
 void drawSoundButton()
 { // Modified to not take canvas parameter
+  ESP_LOGE("SoundButton", "drawSoundButton() called. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
   soundButtonCanvas.clear(globalSoundEnabled ? TFT_DARKGREEN : TFT_DARKGREY);
   soundButtonCanvas.setTextColor(TFT_WHITE);
   soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum
@@ -438,11 +431,16 @@ void drawSoundButton()
 
 void handleSoundButtonPress(int x, int y)
 {
+  ESP_LOGE("SoundButton", "handleSoundButtonPress() called with x: %d, y: %d", x, y);
   if (x >= soundButtonX && x <= (soundButtonX + soundButtonWidth) &&
       y >= soundButtonY && y <= (soundButtonY + soundButtonHeight))
   {
     globalSoundEnabled = !globalSoundEnabled;
-    ESP_LOGI("SoundButton", "Sound button pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
+    ESP_LOGE("SoundButton", "Sound button pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
     xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_SOUND_BUTTON_READY); // Signal GUI task
+  }
+  else
+  {
+    ESP_LOGE("SoundButton", "Press outside sound button bounds.");
   }
 }
