@@ -26,12 +26,14 @@ extern EventGroupHandle_t xGuiUpdateEventGroup;
 
 extern char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH];
 extern char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH];
+extern char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_PATH_MAX_LENGTH]; // Declare global tilePaths
 
 // C-linkage function declarations
 void drawImageMatrixTask(void *pvParameters);
 bool drawJpgFromSD(const char* filePath);
 void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direction);
 void drawSoundButton(); // Modified to not take canvas parameter
+void updateTiles(double currentLatitude, double currentLongitude, int currentTileZ, int currentTileX, int currentTileY, double globalDirection); // New: Declare updateTiles function
 
 #ifdef __cplusplus
 } // extern "C"

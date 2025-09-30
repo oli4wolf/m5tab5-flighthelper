@@ -9,7 +9,7 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 #include <freertos/event_groups.h> // Include for EventGroupHandle_t
-#include <limits> // For INT_MAX
+#include <limits>                  // For INT_MAX
 #include "gps_task.h"
 #include "tile_calculator.h"
 #include "gui.h"    // Include its own header
@@ -17,14 +17,14 @@
 
 // External global variables from main.cpp
 extern EventGroupHandle_t xGuiUpdateEventGroup; // Declare extern for the event group
-extern bool globalSoundEnabled; // Declare global sound enable flag
-extern SemaphoreHandle_t xGPSMutex; // Declare extern here
-extern double globalLatitude;       // Declare extern here
-extern double globalLongitude;      // Declare extern here
-extern bool globalValid;            // Declare extern here
-extern double globalSpeed;          // Declare extern here
-extern double globalAltitude;       // Declare extern here
-extern double globalDirection;      // Declare extern here
+extern bool globalSoundEnabled;                 // Declare global sound enable flag
+extern SemaphoreHandle_t xGPSMutex;             // Declare extern here
+extern double globalLatitude;                   // Declare extern here
+extern double globalLongitude;                  // Declare extern here
+extern bool globalValid;                        // Declare extern here
+extern double globalSpeed;                      // Declare extern here
+extern double globalAltitude;                   // Declare extern here
+extern double globalDirection;                  // Declare extern here
 
 extern SemaphoreHandle_t xSensorMutex;
 extern float globalPressure;
@@ -47,6 +47,7 @@ M5Canvas dir_icon(&M5.Display); // Declare M5Canvas globally for direction icon
 // Define globalCurrentTilePath
 char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH] = "";
 char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH] = "";
+char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_PATH_MAX_LENGTH]; // Define global tilePaths
 
 // Helper function to draw a single tile, handling cache and SD loading
 void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
@@ -116,6 +117,71 @@ void initDirectionIcon()
   dir_icon.setPivot(DIR_ICON_R, DIR_ICON_R);
 }
 
+// New function to update and draw map tiles
+void updateTiles(double currentLatitude, double currentLongitude, int currentTileZ, int currentTileX, int currentTileY, double globalDirection)
+{
+  int pixelOffsetX = 0;
+  int pixelOffsetY = 0;
+  latLngToPixelOffset(currentLatitude, currentLongitude, currentTileZ, &pixelOffsetX, &pixelOffsetY);
+
+  // Calculate the top-left coordinates for the drawing grid
+  // The central tile (globalTileX, globalTileY) will be at index [DRAW_GRID_CENTER_OFFSET][DRAW_GRID_CENTER_OFFSET] in the DRAW_GRID_DIMENSION x DRAW_GRID_DIMENSION array
+  int conceptualGridStartX = currentTileX - DRAW_GRID_CENTER_OFFSET;
+  int conceptualGridStartY = currentTileY - DRAW_GRID_CENTER_OFFSET;
+
+  // Populate the TILE_GRID_DIMENSION x TILE_GRID_DIMENSION tilePaths array
+  for (int y = 0; y < SCREEN_BUFFER_TILE_DIMENSION; ++y)
+  {
+    for (int x = 0; x < SCREEN_BUFFER_TILE_DIMENSION; ++x)
+    {
+      int tileToLoadX = currentTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
+      int tileToLoadY = currentTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
+      sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", currentTileZ, tileToLoadX, tileToLoadY);
+      if (x == SCREEN_BUFFER_CENTER_OFFSET && y == SCREEN_BUFFER_CENTER_OFFSET) {
+          strncpy(globalCurrentCenterTilePath, tilePaths[y][x], TILE_PATH_MAX_LENGTH - 1);
+          globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
+      }
+    }
+  }
+
+  // Calculate the drawing origin so that the GPS coordinate (pixelOffsetX, pixelOffsetY within its tile)
+  // is centered on the screen.
+  // The tile containing the GPS coordinate is (currentTileX, currentTileY).
+  // The top-left corner of this tile should be drawn at:
+  // (screenBufferCanvas.width() / 2 - pixelOffsetX, screenBufferCanvas.height() / 2 - pixelOffsetY)
+  int drawOriginX = (screenBufferCanvas.width() / 2) - pixelOffsetX;
+  int drawOriginY = (screenBufferCanvas.height() / 2) - pixelOffsetY;
+
+  screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
+  ESP_LOGI("updateTiles", "Performing full redraw.");
+  // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
+  for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset)
+  {
+    for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset)
+    {
+      int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
+      int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
+      tileCanvas.clear(); // Clear the individual tile canvas
+      drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
+               currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+      tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
+    }
+  }
+
+  // Draw a red point at the GPS fix location (center of the screen) on the screen buffer
+  int centerX = screenBufferCanvas.width() / 2;
+  int centerY = screenBufferCanvas.height() / 2;
+
+  // Draw arrow head (triangle)
+  drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
+  // drawSoundButton(screenBufferCanvas); // Sound button now drawn directly to M5.Display
+
+  ESP_LOGI("updateTiles", "Pushing screenBufferCanvas to M5.Display at (-152, 128).");
+  screenBufferCanvas.pushSprite(-152, 128);
+  ESP_LOGI("updateTiles", "screenBufferCanvas pushed.");
+}
+
+
 void drawImageMatrixTask(void *pvParameters)
 {
   ESP_LOGI("drawImageMatrixTask", "Task started.");
@@ -133,9 +199,6 @@ void drawImageMatrixTask(void *pvParameters)
   int prevTileX = -1;
   int prevTileY = -1;
   int prevTileZ = -1;
-
-  // SCREEN_BUFFER_TILE_DIMENSION x SCREEN_BUFFER_TILE_DIMENSION conceptual tile array to store file paths
-  char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_PATH_MAX_LENGTH];
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
   ESP_LOGI("drawImageMatrixTask", "tileCanvas created. Width: %d, Height: %d", tileCanvas.width(), tileCanvas.height());
@@ -197,72 +260,14 @@ void drawImageMatrixTask(void *pvParameters)
     EventBits_t uxBits = xEventGroupWaitBits(
         xGuiUpdateEventGroup,
         GUI_EVENT_GPS_DATA_READY | GUI_EVENT_VARIO_DATA_READY | GUI_EVENT_MAP_DATA_READY | GUI_EVENT_SOUND_BUTTON_READY,
-        pdTRUE,    // Clear bits on exit
-        pdFALSE,   // Don't wait for all bits
+        pdTRUE,           // Clear bits on exit
+        pdFALSE,          // Don't wait for all bits
         pdMS_TO_TICKS(10) // Wait for a short period, then re-evaluate
     );
 
     if ((uxBits & GUI_EVENT_MAP_DATA_READY) != 0)
     {
-      int pixelOffsetX = 0;
-      int pixelOffsetY = 0;
-      latLngToPixelOffset(currentLatitude, currentLongitude, currentTileZ, &pixelOffsetX, &pixelOffsetY);
-
-      // Calculate the top-left coordinates for the drawing grid
-      // The central tile (globalTileX, globalTileY) will be at index [DRAW_GRID_CENTER_OFFSET][DRAW_GRID_CENTER_OFFSET] in the DRAW_GRID_DIMENSION x DRAW_GRID_DIMENSION array
-      int conceptualGridStartX = currentTileX - DRAW_GRID_CENTER_OFFSET;
-      int conceptualGridStartY = currentTileY - DRAW_GRID_CENTER_OFFSET;
-
-      // Populate the TILE_GRID_DIMENSION x TILE_GRID_DIMENSION tilePaths array
-      for (int y = 0; y < SCREEN_BUFFER_TILE_DIMENSION; ++y)
-      {
-        for (int x = 0; x < SCREEN_BUFFER_TILE_DIMENSION; ++x)
-        {
-          int tileToLoadX = currentTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
-          int tileToLoadY = currentTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
-          sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", globalTileZ, tileToLoadX, tileToLoadY);
-          if (x == SCREEN_BUFFER_CENTER_OFFSET && y == SCREEN_BUFFER_CENTER_OFFSET) {
-              strncpy(globalCurrentCenterTilePath, tilePaths[y][x], TILE_PATH_MAX_LENGTH - 1);
-              globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
-          }
-        }
-      }
-
-      // Calculate the drawing origin so that the GPS coordinate (pixelOffsetX, pixelOffsetY within its tile)
-      // is centered on the screen.
-      // The tile containing the GPS coordinate is (currentTileX, currentTileY).
-      // The top-left corner of this tile should be drawn at:
-      // (screenBufferCanvas.width() / 2 - pixelOffsetX, screenBufferCanvas.height() / 2 - pixelOffsetY)
-      int drawOriginX = (screenBufferCanvas.width() / 2) - pixelOffsetX;
-      int drawOriginY = (screenBufferCanvas.height() / 2) - pixelOffsetY;
-
-      screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
-      ESP_LOGI("drawImageMatrixTask", "Performing full redraw.");
-      // Draw all DRAW_GRID_DIMENSION * DRAW_GRID_DIMENSION tiles to the screen buffer
-      for (int yOffset = -DRAW_GRID_CENTER_OFFSET; yOffset <= DRAW_GRID_CENTER_OFFSET; ++yOffset)
-      {
-        for (int xOffset = -DRAW_GRID_CENTER_OFFSET; xOffset <= DRAW_GRID_CENTER_OFFSET; ++xOffset)
-        {
-          int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-          int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-          tileCanvas.clear(); // Clear the individual tile canvas
-          drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
-                   globalTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
-          tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
-        }
-      }
-
-      // Draw a red point at the GPS fix location (center of the screen) on the screen buffer
-      int centerX = screenBufferCanvas.width() / 2;
-      int centerY = screenBufferCanvas.height() / 2;
-
-      // Draw arrow head (triangle)
-      drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
-      // drawSoundButton(screenBufferCanvas); // Sound button now drawn directly to M5.Display
-
-      ESP_LOGI("drawImageMatrixTask", "Pushing screenBufferCanvas to M5.Display at (-152, 128).");
-      screenBufferCanvas.pushSprite(-152, 128);
-      ESP_LOGI("drawImageMatrixTask", "screenBufferCanvas pushed.");
+      updateTiles(currentLatitude, currentLongitude, currentTileZ, currentTileX, currentTileY, globalDirection);
     }
 
     if ((uxBits & GUI_EVENT_GPS_DATA_READY) != 0)
@@ -409,11 +414,12 @@ static int soundButtonY;
 static int soundButtonWidth;
 static int soundButtonHeight;
 
-void initSoundButton() {
-  soundButtonWidth = 80; // Example width
-  soundButtonHeight = 40; // Example height
+void initSoundButton()
+{
+  soundButtonWidth = 80;                                     // Example width
+  soundButtonHeight = 40;                                    // Example height
   soundButtonX = M5.Display.width() - soundButtonWidth - 10; // 10px from right edge
-  soundButtonY = 10; // 10px from top edge
+  soundButtonY = 10;                                         // 10px from top edge
 
   soundButtonCanvas.createSprite(soundButtonWidth, soundButtonHeight);
   soundButtonCanvas.setFont(&fonts::Font2);
@@ -421,7 +427,8 @@ void initSoundButton() {
   ESP_LOGI("SoundButton", "Sound button initialized. X: %d, Y: %d, W: %d, H: %d", soundButtonX, soundButtonY, soundButtonWidth, soundButtonHeight);
 }
 
-void drawSoundButton() { // Modified to not take canvas parameter
+void drawSoundButton()
+{ // Modified to not take canvas parameter
   soundButtonCanvas.clear(globalSoundEnabled ? TFT_DARKGREEN : TFT_DARKGREY);
   soundButtonCanvas.setTextColor(TFT_WHITE);
   soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum
@@ -429,11 +436,13 @@ void drawSoundButton() { // Modified to not take canvas parameter
   soundButtonCanvas.pushSprite(soundButtonX, soundButtonY); // Push directly to M5.Display
 }
 
-void handleSoundButtonPress(int x, int y) {
+void handleSoundButtonPress(int x, int y)
+{
   if (x >= soundButtonX && x <= (soundButtonX + soundButtonWidth) &&
-      y >= soundButtonY && y <= (soundButtonY + soundButtonHeight)) {
-      globalSoundEnabled = !globalSoundEnabled;
-      ESP_LOGI("SoundButton", "Sound button pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
-      xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_SOUND_BUTTON_READY); // Signal GUI task
+      y >= soundButtonY && y <= (soundButtonY + soundButtonHeight))
+  {
+    globalSoundEnabled = !globalSoundEnabled;
+    ESP_LOGI("SoundButton", "Sound button pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
+    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_SOUND_BUTTON_READY); // Signal GUI task
   }
 }
