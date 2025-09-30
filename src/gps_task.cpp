@@ -4,6 +4,7 @@
 #include <freertos/semphr.h> // Required for mutex
 #include "config.h" // Include configuration constants
 #include "tile_calculator.h"
+#include "gui.h" // Include gui.h for event group
 
 // Declare extern global variables and mutex from main.cpp
 extern double globalLatitude;
@@ -58,8 +59,9 @@ void gpsReadTask(void *pvParameters) {
                         globalValid = true; // GPS fix is valid
 
                         xSemaphoreGive(xGPSMutex);
+                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
                     }
-                } 
+                }
             } else {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
             }

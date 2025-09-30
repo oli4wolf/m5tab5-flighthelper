@@ -2,6 +2,7 @@
 #define GUI_H
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/event_groups.h> // Include for EventGroupHandle_t
 
 #ifdef __cplusplus
 // C++ specific includes
@@ -15,6 +16,14 @@
 extern "C" {
 #endif
 
+extern EventGroupHandle_t xGuiUpdateEventGroup;
+
+// Event bits for GUI updates
+#define GUI_EVENT_GPS_DATA_READY    (1 << 0)
+#define GUI_EVENT_VARIO_DATA_READY  (1 << 1)
+#define GUI_EVENT_MAP_DATA_READY    (1 << 2)
+#define GUI_EVENT_SOUND_BUTTON_READY (1 << 3)
+
 extern char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH];
 extern char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH];
 
@@ -22,13 +31,14 @@ extern char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH];
 void drawImageMatrixTask(void *pvParameters);
 bool drawJpgFromSD(const char* filePath);
 void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direction);
-void drawSoundButton(M5Canvas& canvas);
+void drawSoundButton(); // Modified to not take canvas parameter
 
 #ifdef __cplusplus
 } // extern "C"
 
 extern M5Canvas screenBufferCanvas;
 extern M5Canvas gpsCanvas;
+extern M5Canvas varioCanvas; // Added varioCanvas extern
 extern M5Canvas dir_icon; // Declare dir_icon globally
 
 #endif // __cplusplus

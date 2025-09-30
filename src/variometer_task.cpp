@@ -1,7 +1,7 @@
 #include "variometer_task.h"
 #include <M5Unified.h>
 #include "sensor_task.h"     // For globalPressure and xSensorMutex
-#include "gui.h"             // For M5.Display functions
+#include "gui.h"             // For M5.Display functions and event group
 #include <freertos/semphr.h>
 #include <math.h> // For pow()
 #include <vector> // For std::vector
@@ -99,6 +99,7 @@ void variometerTask(void *pvParameters) {
                 globalAltitude_m = averagedAltitude;
                 globalVerticalSpeed_mps = verticalSpeed;
                 xSemaphoreGive(xVariometerMutex);
+                xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_VARIO_DATA_READY); // Signal GUI task
             }
 
             // Tone generation logic
@@ -124,29 +125,6 @@ void variometerTask(void *pvParameters) {
             previousMillis = currentMillis;
         }
 
-        // Display update logic (moved from main.cpp)
-        float currentPressure = 0;
-        float currentTemperature = 0;
-        // GPS and Tile related variables removed
-
-        float currentBaroAltitude = 0;
-        float currentVerticalSpeed = 0;
-
-        if (xSemaphoreTake(xSensorMutex, portMAX_DELAY) == pdTRUE)
-        {
-            currentPressure = globalPressure;
-            currentTemperature = globalTemperature;
-            xSemaphoreGive(xSensorMutex);
-        }
-
-        if (xSemaphoreTake(xVariometerMutex, portMAX_DELAY) == pdTRUE)
-        {
-            currentBaroAltitude = globalAltitude_m;
-            currentVerticalSpeed = globalVerticalSpeed_mps;
-            xSemaphoreGive(xVariometerMutex);
-        }
-
-        // Display update logic (without GPS or tile data)
         vTaskDelay(pdMS_TO_TICKS(VARIOMETER_TASK_DELAY_MS)); // Check more frequently than updateIntervalMs
     }
 }

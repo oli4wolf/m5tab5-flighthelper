@@ -15,6 +15,7 @@
 #include "config.h"         // Include configuration constants
 
 // global variables (define variables to be used throughout the program)
+EventGroupHandle_t xGuiUpdateEventGroup; // Declare the event group handle
 bool globalSoundEnabled = true; // Define global sound enable flag
 float globalPressure;
 float globalTemperature;
@@ -119,6 +120,7 @@ void setup()
   xSensorMutex = xSemaphoreCreateMutex();     // Initialize the sensor mutex
   xGPSMutex = xSemaphoreCreateMutex();        // Initialize the GPS mutex
   xPositionMutex = xSemaphoreCreateMutex();   // Initialize the position mutex
+  xGuiUpdateEventGroup = xEventGroupCreate(); // Initialize the GUI update event group
 
   M5.Display.setTextSize(3);              // change text size
   M5.Display.print("Hello World!!!");     // display Hello World! and one line is displayed on the screen
@@ -193,5 +195,5 @@ void setup()
 void loop()
 {
 
-  delay(1000);
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
