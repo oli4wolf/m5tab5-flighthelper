@@ -225,8 +225,17 @@ void drawImageMatrixTask(void *pvParameters)
       xSemaphoreGive(xGPSMutex);
     }
 
-    if (currentValid)
+    if (currentValid || USE_TESTDATA) // Only update tiles if GPS is valid or if using test data
     {
+      //Turn off testdata if there are real GPS data.
+    if(USE_TESTDATA && !currentValid)
+    {
+      currentLatitude = 46.947597;
+      currentLongitude = 7.440434;
+      currentSpeed = 4.0;
+      gpsCanvas.printf("Using test data\n");
+    }
+
       // Calculate tile coordinates
       currentTileZ = calculateZoomLevel(currentSpeed, M5.Display.width(), M5.Display.height());
       latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
@@ -357,6 +366,8 @@ void updateDisplayWithGPSTelemetry()
     gpsCanvas.printf("Waiting for GPS fix...\n");
     gpsCanvas.printf("Sats: %lu\n", currentSatellites);
     gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
+
+    // Duplicate assignment, will be removed in fix
     ESP_LOGW("GPS", "No valid GPS fix.");
   }
 
