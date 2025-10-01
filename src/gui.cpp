@@ -176,8 +176,13 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
   drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
   // drawSoundButton(screenBufferCanvas); // Sound button now drawn directly to M5.Display
 
-  screenBufferCanvas.pushSprite(-152, 128);
-  ESP_LOGD("updateTiles", "screenBufferCanvas pushed.");
+  // Calculate offsets to center the screenBufferCanvas on the M5.Display.
+  // The screenBufferCanvas is larger than the display, so negative offsets are expected.
+  const int offsetX = (M5.Display.width() - screenBufferCanvas.width()) / 2;
+  const int offsetY = (M5.Display.height() - screenBufferCanvas.height()) / 2;
+  
+  screenBufferCanvas.pushSprite(offsetX, offsetY);
+  ESP_LOGD("updateTiles", "Pushing screenBufferCanvas with calculated offsetX: %d, offsetY: %d", offsetX, offsetY);
 }
 
 
