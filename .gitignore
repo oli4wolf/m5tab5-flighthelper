@@ -3,6 +3,6 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-kicad/AdapterV1/*
-!kicad/AdapterV1/*.zip
-!kicad/AdapterV1/*.jpg
+kicad/Adapter/*
+!kicad/Adapter/*.zip
+!kicad/Adapter/*.jpg

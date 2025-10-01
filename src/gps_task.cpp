@@ -30,11 +30,9 @@ void initGPSTask() {
 
     if (!gpsSerial) {
         ESP_LOGE("GPS", "Failed to initialize GPS serial port.");
-        // Serial.println("Failed to initialize GPS serial port."); // Removed to avoid USB CDC conflict
         while (1);
     } else {
         ESP_LOGI("GPS", "GPS serial port initialized successfully.");
-        // Serial.println("GPS serial port initialized successfully."); // Removed to avoid USB CDC conflict
     }
 }
 
@@ -44,7 +42,6 @@ void gpsReadTask(void *pvParameters) {
     for (;;) {
         while (gpsSerial.available() > 0) {
             char gpsChar = gpsSerial.read();
-            // Serial.print(gpsChar); // Uncomment to see raw GPS data
             if (gps.encode(gpsChar)) {
                 if (gps.location.isValid()) {
                     if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE) {
@@ -64,6 +61,7 @@ void gpsReadTask(void *pvParameters) {
                 }
             } else {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
+                xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
             }
         }
 
