@@ -42,6 +42,7 @@ M5Canvas tileCanvas(&M5.Display);         // Declare M5Canvas globally for indiv
 M5Canvas screenBufferCanvas(&M5.Display); // Declare M5Canvas globally for full screen buffer
 M5Canvas gpsCanvas(&M5.Display);
 M5Canvas varioCanvas(&M5.Display);
+M5Canvas verticalSpeedCanvas(&M5.Display);
 M5Canvas dir_icon(&M5.Display); // Declare M5Canvas globally for direction icon
 
 // Define globalCurrentTilePath
@@ -205,13 +206,11 @@ void drawImageMatrixTask(void *pvParameters)
   int prevTileZ = -1;
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
-  ESP_LOGI("drawImageMatrixTask", "tileCanvas created. Width: %d, Height: %d", tileCanvas.width(), tileCanvas.height());
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
-  ESP_LOGI("drawImageMatrixTask", "screenBufferCanvas created. Width: %d, Height: %d", screenBufferCanvas.width(), screenBufferCanvas.height());
   gpsCanvas.createSprite(SCREEN_WIDTH, 128);
-  ESP_LOGI("drawImageMatrixTask", "gpsCanvas created. Width: %d, Height: %d", gpsCanvas.width(), gpsCanvas.height());
-  varioCanvas.createSprite(SCREEN_WIDTH, 128);
-  ESP_LOGI("drawImageMatrixTask", "varioCanvas created. Width: %d, Height: %d", varioCanvas.width(), varioCanvas.height());
+  varioCanvas.createSprite(SCREEN_WIDTH/2, 128);
+  verticalSpeedCanvas.createSprite(SCREEN_WIDTH/2, 128);
+  ESP_LOGI("drawImageMatrixTask", "Canvas initialized.");
 
   initDirectionIcon(); // Initialize the direction icon once
   ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
@@ -335,6 +334,33 @@ void updateDisplayWithVarioTelemetry()
   varioCanvas.printf("Altitude: %.1f m\n", currentBaroAltitude);
   varioCanvas.printf("Vertical Speed: %.1f m/s\n", currentVerticalSpeed);
   varioCanvas.pushSprite(0, 0);
+
+  // implement vertical speed display
+  if(currentVerticalSpeed > 0.5) {
+    verticalSpeedCanvas.clear(TFT_GREEN);
+      verticalSpeedCanvas.setTextColor(TFT_BLACK);
+  } else if (currentVerticalSpeed < -0.5) {
+    verticalSpeedCanvas.clear(TFT_RED);
+      verticalSpeedCanvas.setTextColor(TFT_WHITE);
+  } else {
+    verticalSpeedCanvas.clear(TFT_BLACK);
+      verticalSpeedCanvas.setTextColor(TFT_WHITE);
+  }
+  verticalSpeedCanvas.setFont(&fonts::Font2);
+  verticalSpeedCanvas.setTextSize(6);
+
+  // Calculate text dimensions for centering
+  char speedText[20]; // Buffer to hold the formatted string
+  sprintf(speedText, "%.1f m/s", currentVerticalSpeed);
+  int16_t textWidth = verticalSpeedCanvas.textWidth(speedText);
+  int16_t textHeight = verticalSpeedCanvas.fontHeight();
+  // Calculate x and y coordinates to center the text
+  int16_t x = (verticalSpeedCanvas.width() - textWidth) / 2;
+  int16_t y = (verticalSpeedCanvas.height() - textHeight) / 2;
+
+  verticalSpeedCanvas.setCursor(x, y);
+  verticalSpeedCanvas.printf(speedText);
+  verticalSpeedCanvas.pushSprite(SCREEN_WIDTH/2, 0);
 
   return;
 }
