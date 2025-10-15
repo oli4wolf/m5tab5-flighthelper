@@ -387,23 +387,21 @@ void updateDisplayWithGPSTelemetry()
     xSemaphoreGive(xGPSMutex);
   }
 
-  gpsCanvas.clear(TFT_BLACK);
   gpsCanvas.setFont(&fonts::Font2);
   gpsCanvas.setTextSize(2);
   gpsCanvas.setTextColor(TFT_WHITE);
   gpsCanvas.setCursor(0, 0);
   if (!globalValid)
   {
+    gpsCanvas.clear(TFT_DARKGREY);
     gpsCanvas.printf("Waiting for GPS fix...\n");
     gpsCanvas.printf("Sats: %lu\n", currentSatellites);
     gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
 
     // Duplicate assignment, will be removed in fix
     ESP_LOGW("GPS", "No valid GPS fix.");
-  }
-
-  else
-  {
+  }else{
+    gpsCanvas.clear(TFT_DARKGREEN);
     gpsCanvas.printf("Lat: %.6f\n", currentLatitude);
     gpsCanvas.printf("Lng: %.6f\n", currentLongitude);
     gpsCanvas.printf("Alt: %.1f m\n", currentAltitude);
