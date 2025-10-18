@@ -13,6 +13,9 @@
 #include <freertos/semphr.h> // For SemaphoreHandle_t
 #include "config.h" // For TILE_PATH_MAX_LENGTH
 
+extern bool globalTwoFingerGestureActive; // New: Flag for active two-finger gesture
+extern int globalManualZoomLevel; // New: Manually set zoom level
+
 extern "C" {
 #endif
 
@@ -23,6 +26,7 @@ extern EventGroupHandle_t xGuiUpdateEventGroup;
 #define GUI_EVENT_VARIO_DATA_READY  (1 << 1)
 #define GUI_EVENT_MAP_DATA_READY    (1 << 2)
 #define GUI_EVENT_SOUND_BUTTON_READY (1 << 3)
+#define GUI_EVENT_TOUCH_DATA_READY (1 << 4) // New: Event bit for touch data updates
 
 extern char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH];
 extern char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH];
@@ -34,6 +38,7 @@ bool drawJpgFromSD(const char* filePath);
 void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direction);
 void drawSoundButton(); // Modified to not take canvas parameter
 void updateTiles(double currentLatitude, double currentLongitude, int currentTileZ, int currentTileX, int currentTileY, double globalDirection); // New: Declare updateTiles function
+void handleSoundButtonPress(int x, int y); // Declare handleSoundButtonPress
 
 #ifdef __cplusplus
 } // extern "C"

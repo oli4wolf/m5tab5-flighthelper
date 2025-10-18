@@ -6,3 +6,4 @@
 kicad/Adapter/*
 !kicad/Adapter/*.zip
 !kicad/Adapter/*.jpg
+kicad/*

@@ -12,11 +12,13 @@
 #include "gui.h"             // Include the new GUI header
 #include "variometer_task.h" // Include the new variometer task header
 #include "button_task.h"     // Include the new button task header
+#include "touch_task.h"      // Include the new touch task header
 #include "config.h"         // Include configuration constants
 
 // global variables (define variables to be used throughout the program)
 EventGroupHandle_t xGuiUpdateEventGroup; // Declare the event group handle
 bool globalSoundEnabled = true; // Define global sound enable flag
+int globalManualZoomLevel = 0; // Define global manual zoom level, initialized to 0
 float globalPressure;
 float globalTemperature;
 SemaphoreHandle_t xSensorMutex;
@@ -62,6 +64,7 @@ extern const int GPS_TASK_STACK_SIZE;
 extern const int VARIOMETER_TASK_STACK_SIZE;
 extern const int IMAGE_MATRIX_TASK_STACK_SIZE;
 extern const int BUTTON_TASK_STACK_SIZE; // New: Stack size for button monitoring task
+extern const int TOUCH_TASK_STACK_SIZE; // New: Stack size for touch monitoring task
 
 // Function to draw a Jpeg image from SD card
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
@@ -115,6 +118,7 @@ void setup()
   initGPSTask();        // Initialize the GPS task components
   initVariometerTask(); // Initialize the variometer task components
   initButtonMonitorTask(); // Initialize the button monitor task components
+  initTouchMonitorTask(); // Initialize the touch monitor task components
   initSoundButton();     // Initialize the sound button components
 
   xSensorMutex = xSemaphoreCreateMutex();     // Initialize the sensor mutex
@@ -174,6 +178,16 @@ void setup()
       buttonMonitorTask,   // Task function
       "ButtonMonitorTask", // Name of task
       BUTTON_TASK_STACK_SIZE,             // Stack size (bytes)
+      NULL,             // Parameter to pass to function
+      1,                // Task priority (0 to configMAX_PRIORITIES - 1)
+      NULL,             // Task handle
+      APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
+
+  // Create and start the touch monitoring task
+  xTaskCreatePinnedToCore(
+      touchMonitorTask,   // Task function
+      "TouchMonitorTask", // Name of task
+      TOUCH_TASK_STACK_SIZE,             // Stack size (bytes)
       NULL,             // Parameter to pass to function
       1,                // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,             // Task handle

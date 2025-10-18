@@ -10,6 +10,15 @@ const int SCREEN_HEIGHT = 1280; // Height of the M5Stack screen
 const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality
 const bool USE_TESTDATA = true; // Set to true to use test GPS data when no valid GPS fix is available
 extern bool globalSoundEnabled; // Global variable to control sound output at runtime
+extern bool globalTwoFingerGestureActive; // New: Flag for active two-finger gesture
+extern int globalManualZoomLevel; // New: Manually set zoom level
+
+// Zoom Constants
+const int MIN_ZOOM_LEVEL = 1;
+const int MAX_ZOOM_LEVEL = 19;
+const int ZOOM_THRESHOLD = 50; // Pixels for distance change to trigger zoom
+const int TOUCH_TASK_STACK_SIZE = 4096; // Stack size for touch monitoring task
+const int TOUCH_TASK_DELAY_MS = 20;    // Delay for touch monitoring task
 
 // SD Card variables
 const int SD_CMD_PIN = 44; // GPIO number for SD card CMD pin
