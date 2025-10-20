@@ -101,7 +101,6 @@ void touchMonitorTask(void *pvParameters)
         else
         {
             globalTwoFingerGestureActive = false;
-            ESP_LOGD("touchMonitorTask", "No touch detected.");
         }
     }
     vTaskDelay(pdMS_TO_TICKS(TOUCH_TASK_DELAY_MS));
