@@ -70,6 +70,7 @@ void touchMonitorTask(void *pvParameters)
                         {
                             globalManualZoomLevel = MAX_ZOOM_LEVEL;
                         }
+                        globalTileZ = globalManualZoomLevel;
                         initialTouchDistance = currentTouchDistance; // Reset initial distance for continuous zooming
                         xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
                         ESP_LOGI("touchMonitorTask", "Zoom In. New zoom level: %d", globalManualZoomLevel);
@@ -86,6 +87,7 @@ void touchMonitorTask(void *pvParameters)
                         {
                             globalManualZoomLevel = MIN_ZOOM_LEVEL;
                         }
+                        globalTileZ = globalManualZoomLevel;
                         initialTouchDistance = currentTouchDistance; // Reset initial distance for continuous zooming
                         xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
                         ESP_LOGI("touchMonitorTask", "Zoom Out. New zoom level: %d", globalManualZoomLevel);

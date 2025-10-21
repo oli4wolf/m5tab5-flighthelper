@@ -44,7 +44,7 @@ SemaphoreHandle_t xGPSMutex;
 SemaphoreHandle_t xPositionMutex;
 int globalTileX;
 int globalTileY;
-int globalTileZ;
+int globalTileZ = DEFAULT_MAP_ZOOM_LEVEL; // Initialize to default zoom level
 
 extern const int TILE_SIZE; // Standard size for map tiles (e.g., OpenStreetMap)
 

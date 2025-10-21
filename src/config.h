@@ -15,6 +15,7 @@ extern int globalManualZoomLevel; // New: Manually set zoom level
 
 // Zoom Constants
 const int MIN_ZOOM_LEVEL = 1;
+const int DEFAULT_MAP_ZOOM_LEVEL = 15;
 const int MAX_ZOOM_LEVEL = 19;
 const int ZOOM_THRESHOLD = 50; // Pixels for distance change to trigger zoom
 const int TOUCH_TASK_STACK_SIZE = 4096; // Stack size for touch monitoring task

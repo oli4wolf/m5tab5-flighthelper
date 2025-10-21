@@ -241,7 +241,7 @@ void drawImageMatrixTask(void *pvParameters)
     }
 
       // Calculate tile coordinates
-      currentTileZ = calculateZoomLevel(currentSpeed, M5.Display.width(), M5.Display.height());
+      currentTileZ = globalTileZ; // Use global zoom level
       latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
 
       // Update global tile coordinates
