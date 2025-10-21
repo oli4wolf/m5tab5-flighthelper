@@ -13,10 +13,18 @@ extern int globalTileZ;
 
 // Global variables declared in config.h and gui.h
 extern EventGroupHandle_t xGuiUpdateEventGroup;
-bool globalTwoFingerGestureActive = false;
+extern bool globalTwoFingerGestureActive;
+extern int globalManualZoomLevel;
+extern int globalMapOffsetX;
+extern int globalMapOffsetY;
+extern bool globalManualMapMode;
 
 // Internal variables for touch gesture
 static int initialTouchDistance = 0;
+static int lastTouchX = 0;
+static int lastTouchY = 0;
+static unsigned long lastTapTime = 0; // For double-tap detection
+static int tapCount = 0; // For double-tap detection
 
 m5::touch_point_t touchPoint[5];
 
@@ -96,14 +104,25 @@ void touchMonitorTask(void *pvParameters)
         }
         else if (nums == 1)
         {
+            int x1 = touchPoint[0].x;
+            int y1 = touchPoint[0].y;
             globalTwoFingerGestureActive = false;
-            handleSoundButtonPress(touchPoint[0].x, touchPoint[0].y);
-            ESP_LOGD("touchMonitorTask", "Single touch detected.");
+            unsigned long currentTime = M5.millis();
+
+            
+            handleSoundButtonPress(touchPoint[0].x, touchPoint[0].y); // Keep existing sound button functionality
         }
-        else
+        else // nums == 0 (no touch)
         {
             globalTwoFingerGestureActive = false;
+            // If no touch, and we were in manual map mode, reset tapCount if enough time has passed
+            if (globalManualMapMode && tapCount > 0) {
+                unsigned long currentTime = M5.millis();
+                if (currentTime - lastTapTime > DOUBLE_TAP_THRESHOLD_MS) {
+                    tapCount = 0; // Reset tap count if too much time has passed
+                }
+            }
         }
+        vTaskDelay(pdMS_TO_TICKS(TOUCH_TASK_DELAY_MS));
     }
-    vTaskDelay(pdMS_TO_TICKS(TOUCH_TASK_DELAY_MS));
 }

@@ -16,6 +16,7 @@ extern bool globalValid; // Indicates if a valid GPS fix is available
 extern double globalDirection;
 extern uint32_t globalTime;
 extern SemaphoreHandle_t xGPSMutex;
+extern bool globalManualMapMode; // New: Flag to indicate if map is in manual drag mode
 
 // The TinyGPSPlus object
 TinyGPSPlus gps;
@@ -43,8 +44,8 @@ void gpsReadTask(void *pvParameters) {
         while (gpsSerial.available() > 0) {
             char gpsChar = gpsSerial.read();
             if (gps.encode(gpsChar)) {
-                if (gps.location.isValid()) {
-                    if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE) {
+                if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE) {
+                    if (gps.location.isValid() && !globalManualMapMode) { // Only update if valid and not in manual map mode
                         globalLatitude = gps.location.lat();
                         globalLongitude = gps.location.lng();
                         globalAltitude = gps.altitude.meters();
@@ -54,10 +55,13 @@ void gpsReadTask(void *pvParameters) {
                         globalTime = gps.time.value();
                         globalHDOP = gps.hdop.value();
                         globalValid = true; // GPS fix is valid
-
-                        xSemaphoreGive(xGPSMutex);
-                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
+                    } else if (globalManualMapMode) {
+                        globalValid = false; // Deactivate GPS for map updates when in manual mode
+                    } else {
+                        globalValid = false; // No valid GPS fix
                     }
+                    xSemaphoreGive(xGPSMutex);
+                    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
                 }
             } else {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
