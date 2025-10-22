@@ -109,7 +109,46 @@ void touchMonitorTask(void *pvParameters)
             globalTwoFingerGestureActive = false;
             unsigned long currentTime = M5.millis();
 
-            
+            // Check for double-tap
+            if (currentTime - lastTapTime < DOUBLE_TAP_THRESHOLD_MS)
+            {
+                tapCount++;
+            }
+            else
+            {
+                tapCount = 1; // Reset tap count if too much time has passed
+            }
+            lastTapTime = currentTime; // Update last tap time
+
+            if(tapCount == 2)
+            {
+                // Double-tap detected
+                globalManualMapMode = false; // Toggle manual map mode
+                // Reset manual offsets when exiting manual mode
+                globalMapOffsetX = 0;
+                globalMapOffsetY = 0;
+                tapCount = 0; // Reset tap count after processing double-tap
+                ESP_LOGI("touchMonitorTask", "Double-tap detected. Manual map mode: %s", globalManualMapMode ? "ON" : "OFF");
+            }
+            // Todo this can not work this way
+            // double tap toggle to gps mode.
+            // single touch drag to move map and enter manual mode.
+            else
+            {
+                globalManualMapMode = true; // Enter manual map mode on single touch
+                // Single touch drag for panning
+                if (lastTouchX != 0 || lastTouchY != 0)
+                {
+                    int deltaX = x1 - lastTouchX;
+                    int deltaY = y1 - lastTouchY;
+
+                        globalMapOffsetX += deltaX;
+                        globalMapOffsetY += deltaY;
+                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
+                        ESP_LOGD("touchMonitorTask", "Panning map. OffsetX: %d, OffsetY: %d", globalMapOffsetX, globalMapOffsetY);
+                }
+            }
+
             handleSoundButtonPress(touchPoint[0].x, touchPoint[0].y); // Keep existing sound button functionality
         }
         else // nums == 0 (no touch)
