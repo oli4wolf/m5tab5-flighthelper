@@ -10,11 +10,11 @@ const int SCREEN_HEIGHT = 1280; // Height of the M5Stack screen
 const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality
 const bool USE_TESTDATA = true; // Set to true to use test GPS data when no valid GPS fix is available
 extern bool globalSoundEnabled; // Global variable to control sound output at runtime
-bool globalTwoFingerGestureActive = false; // New: Flag for active two-finger gesture
+extern bool globalTwoFingerGestureActive; // New: Flag for active two-finger gesture
 extern int globalManualZoomLevel; // New: Manually set zoom level
-int globalMapOffsetX = 0; // New: Manual map offset in pixels
-int globalMapOffsetY = 0; // New: Manual map offset in pixels
-bool globalManualMapMode = false; // New: Flag to indicate if map is in manual drag mode
+extern int globalMapOffsetX; // New: Manual map offset in pixels
+extern int globalMapOffsetY; // New: Manual map offset in pixels
+extern bool globalManualMapMode; // New: Flag to indicate if map is in manual drag mode
 
 // Zoom Constants
 const int MIN_ZOOM_LEVEL = 1;
