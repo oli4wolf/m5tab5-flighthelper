@@ -2,9 +2,11 @@
 #include <M5Unified.h>
 #include <TinyGPSPlus.h>
 #include <freertos/semphr.h> // Required for mutex
-#include "config.h" // Include configuration constants
+#include "config.h"          // Include configuration constants
 #include "tile_calculator.h"
 #include "gui.h" // Include gui.h for event group
+
+#include "gpsTestData.h" // Include GPS test data
 
 // Declare extern global variables and mutex from main.cpp
 extern double globalLatitude;
@@ -24,28 +26,39 @@ TinyGPSPlus gps;
 // The serial port for GPS
 HardwareSerial gpsSerial(GPS_UART); // Use UART1
 
-void initGPSTask() {
+void initGPSTask()
+{
     // Initialize UART1 for GPS communication
     // RX (GPS TX) on GPIO0, TX (GPS RX) on GPIO1
     gpsSerial.begin(GPS_SERIAL_BAUD_RATE, GPS_SERIAL_MODE, GPS_SERIAL_RX_PIN, GPS_SERIAL_TX_PIN);
 
-    if (!gpsSerial) {
+    if (!gpsSerial)
+    {
         ESP_LOGE("GPS", "Failed to initialize GPS serial port.");
-        while (1);
-    } else {
+        while (1)
+            ;
+    }
+    else
+    {
         ESP_LOGI("GPS", "GPS serial port initialized successfully.");
     }
 }
 
-void gpsReadTask(void *pvParameters) {
-    (void) pvParameters; // Suppress unused parameter warning
+void gpsReadTask(void *pvParameters)
+{
+    (void)pvParameters; // Suppress unused parameter warning
 
-    for (;;) {
-        while (gpsSerial.available() > 0) {
+    for (;;)
+    {
+        while (gpsSerial.available() > 0)
+        {
             char gpsChar = gpsSerial.read();
-            if (gps.encode(gpsChar)) {
-                if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE) {
-                    if (gps.location.isValid() && !globalManualMapMode) { // Only update if valid and not in manual map mode
+            if (gps.encode(gpsChar))
+            {
+                if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                {
+                    if (gps.location.isValid() && !globalManualMapMode)
+                    { // Only update if valid and not in manual map mode
                         globalLatitude = gps.location.lat();
                         globalLongitude = gps.location.lng();
                         globalAltitude = gps.altitude.meters();
@@ -55,17 +68,32 @@ void gpsReadTask(void *pvParameters) {
                         globalTime = gps.time.value();
                         globalHDOP = gps.hdop.value();
                         globalValid = true; // GPS fix is valid
-                    } else if (globalManualMapMode) {
-                        globalValid = false; // Deactivate GPS for map updates when in manual mode
-                    } else {
+                        globalMapOffsetX = 0; // Reset manual offsets on valid fix
+                        globalMapOffsetY = 0;
+                    }
+                    else
+                    {
                         globalValid = false; // No valid GPS fix
                     }
                     xSemaphoreGive(xGPSMutex);
                     xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
                 }
-            } else {
+            }
+            else
+            {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
-                xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
+                if (USE_TESTDATA && !globalManualMapMode && !globalValid)
+                {
+                    if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                    {
+                        int randomIndex = rand() % gpsTestData.size();
+                        globalLatitude = gpsTestData[randomIndex].lat;
+                        globalLongitude = gpsTestData[randomIndex].lon;
+                        ESP_LOGD("GPS", "Using test data: Lat %.5f, Lon %.5f", globalLatitude, globalLongitude);
+                    }
+                    xSemaphoreGive(xGPSMutex);
+                    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
+                }
             }
         }
 

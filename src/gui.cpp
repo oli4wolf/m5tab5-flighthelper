@@ -14,7 +14,6 @@
 #include "tile_calculator.h"
 #include "gui.h"    // Include its own header
 #include "config.h" // Include configuration constants
-#include "gpsTestData.h" // Include GPS test data
 
 // External global variables from main.cpp
 extern EventGroupHandle_t xGuiUpdateEventGroup; // Declare extern for the event group
@@ -253,19 +252,8 @@ void drawImageMatrixTask(void *pvParameters)
       xSemaphoreGive(xGPSMutex);
     }
 
-    if (!globalManualMapMode && !currentValid && USE_TESTDATA) // Only update tiles if GPS is valid or if using test data AND not in manual map mode
+    if (!globalManualMapMode && !currentValid && USE_TESTDATA) // Use Testdata if nothing else.
     {
-        //Turn off testdata if there are real GPS data.
-        if(USE_TESTDATA && !currentValid)
-        {
-            int randomIndex = rand() % gpsTestData.size();
-            currentLatitude = gpsTestData[randomIndex].lat;
-            currentLongitude = gpsTestData[randomIndex].lon;
-            currentSpeed = 4.0;
-            ESP_LOGI("GPS_TESTDATA", "Using test data: Lat %.6f, Lon %.6f", currentLatitude, currentLongitude);
-            gpsCanvas.printf("Using test data \nLat: %.6f\n Lon %.6f", currentLatitude, currentLongitude);
-        }
-
         // Calculate tile coordinates
         currentTileZ = globalTileZ; // Use global zoom level
         latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
@@ -306,6 +294,8 @@ void drawImageMatrixTask(void *pvParameters)
 
     if ((uxBits & GUI_EVENT_MAP_DATA_READY) != 0)
     {
+      ESP_LOGD("drawImageMatrixTask", "updateTiles: %.6f, %.6f, Z:%d, X:%d, Y:%d, Dir:%.2f",
+               currentLatitude, currentLongitude, currentTileZ, currentTileX, currentTileY, globalDirection);
       updateTiles(currentLatitude, currentLongitude, currentTileZ, currentTileX, currentTileY, globalDirection);
     }
 
