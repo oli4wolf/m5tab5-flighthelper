@@ -14,6 +14,7 @@
 #include "tile_calculator.h"
 #include "gui.h"    // Include its own header
 #include "config.h" // Include configuration constants
+#include "gpsTestData.h" // Include GPS test data
 
 // External global variables from main.cpp
 extern EventGroupHandle_t xGuiUpdateEventGroup; // Declare extern for the event group
@@ -252,15 +253,17 @@ void drawImageMatrixTask(void *pvParameters)
       xSemaphoreGive(xGPSMutex);
     }
 
-    if (!globalManualMapMode && (currentValid || USE_TESTDATA)) // Only update tiles if GPS is valid or if using test data AND not in manual map mode
+    if (!globalManualMapMode && !currentValid && USE_TESTDATA) // Only update tiles if GPS is valid or if using test data AND not in manual map mode
     {
         //Turn off testdata if there are real GPS data.
         if(USE_TESTDATA && !currentValid)
         {
-            currentLatitude = 46.947597;
-            currentLongitude = 7.440434;
+            int randomIndex = rand() % gpsTestData.size();
+            currentLatitude = gpsTestData[randomIndex].lat;
+            currentLongitude = gpsTestData[randomIndex].lon;
             currentSpeed = 4.0;
-            gpsCanvas.printf("Using test data\n");
+            ESP_LOGI("GPS_TESTDATA", "Using test data: Lat %.6f, Lon %.6f", currentLatitude, currentLongitude);
+            gpsCanvas.printf("Using test data \nLat: %.6f\n Lon %.6f", currentLatitude, currentLongitude);
         }
 
         // Calculate tile coordinates
