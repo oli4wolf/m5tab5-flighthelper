@@ -70,6 +70,7 @@ void gpsReadTask(void *pvParameters)
                         globalValid = true; // GPS fix is valid
                         globalMapOffsetX = 0; // Reset manual offsets on valid fix
                         globalMapOffsetY = 0;
+                        ESP_LOGI("GPS", "Real GPS fix obtained: Lat %.5f, Lon %.5f", globalLatitude, globalLongitude);
                     }
                     else
                     {
@@ -82,17 +83,24 @@ void gpsReadTask(void *pvParameters)
             else
             {
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
+                static unsigned long lastTestDataUpdateTime = 0;
+                const unsigned long TESTDATA_UPDATE_INTERVAL_MS = 15000; // 15 seconds
+
                 if (USE_TESTDATA && !globalManualMapMode && !globalValid)
                 {
-                    if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                    if ((millis() - lastTestDataUpdateTime) >= TESTDATA_UPDATE_INTERVAL_MS)
                     {
-                        int randomIndex = rand() % gpsTestData.size();
-                        globalLatitude = gpsTestData[randomIndex].lat;
-                        globalLongitude = gpsTestData[randomIndex].lon;
-                        ESP_LOGD("GPS", "Using test data: Lat %.5f, Lon %.5f", globalLatitude, globalLongitude);
+                        if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                        {
+                            int randomIndex = rand() % gpsTestData.size();
+                            globalLatitude = gpsTestData[randomIndex].lat;
+                            globalLongitude = gpsTestData[randomIndex].lon;
+                            ESP_LOGW("GPS", "Using test data: Lat %.5f, Lon %.5f (globalValid: %d)", globalLatitude, globalLongitude, globalValid);
+                            lastTestDataUpdateTime = millis(); // Update the last update time
+                            xSemaphoreGive(xGPSMutex);
+                        }
+                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
                     }
-                    xSemaphoreGive(xGPSMutex);
-                    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
                 }
             }
         }

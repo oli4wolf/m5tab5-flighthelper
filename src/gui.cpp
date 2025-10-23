@@ -252,7 +252,7 @@ void drawImageMatrixTask(void *pvParameters)
       xSemaphoreGive(xGPSMutex);
     }
 
-    if (!globalManualMapMode && !currentValid && USE_TESTDATA) // Use Testdata if nothing else.
+    if (!globalManualMapMode && currentValid && USE_TESTDATA) // Use Testdata if nothing else.
     {
         // Calculate tile coordinates
         currentTileZ = globalTileZ; // Use global zoom level
@@ -321,7 +321,7 @@ void drawImageMatrixTask(void *pvParameters)
 // Implementations for text zone update functions
 void updateDisplayWithVarioTelemetry()
 {
-  ESP_LOGD("updateDisplayWithVarioTelemetry", "Task started.");
+  //ESP_LOGD("updateDisplayWithVarioTelemetry", "Task started.");
   float currentPressure = 0;
   float currentTemperature = 0;
   float currentBaroAltitude = 0;
@@ -385,7 +385,7 @@ void updateDisplayWithVarioTelemetry()
 // Implementations for text zone update functions
 void updateDisplayWithGPSTelemetry()
 {
-  ESP_LOGD("updateDisplayWithGPSTelemetry", "Task started.");
+  //ESP_LOGD("updateDisplayWithGPSTelemetry", "Task started.");
   double currentLatitude = 0;
   double currentLongitude = 0;
   double currentSpeed = 0;

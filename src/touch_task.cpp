@@ -26,10 +26,10 @@ static int lastTouchY = 0;
 static unsigned long lastTapTime = 0; // For double-tap detection
 static int tapCount = 0;              // For double-tap detection
 
-int singleTouchX = 0;
-int singleTouchY = 0;
-int doubleTouchX1 = 0;
-int doubleTouchY1 = 0;
+int singleTouchX = -1;
+int singleTouchY = -1;
+int doubleTouchX1 = -1;
+int doubleTouchY1 = -1;
 
 m5::touch_point_t touchPoint[5];
 
