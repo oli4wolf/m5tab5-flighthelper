@@ -11,7 +11,6 @@
 #include "tile_calculator.h" // Include the new tile calculator header
 #include "gui.h"             // Include the new GUI header
 #include "variometer_task.h" // Include the new variometer task header
-#include "button_task.h"     // Include the new button task header
 #include "touch_task.h"      // Include the new touch task header
 #include "config.h"         // Include configuration constants
 

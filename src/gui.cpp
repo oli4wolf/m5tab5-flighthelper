@@ -197,7 +197,7 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
 
   // Draw arrow head (triangle)
   drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
-  // drawSoundButton(screenBufferCanvas); // Sound button now drawn directly to M5.Display
+  drawSoundButton(); // Sound button now drawn directly to M5.Display
 
   // Calculate offsets to center the screenBufferCanvas on the M5.Display.
   // The screenBufferCanvas is larger than the display, so negative offsets are expected.
@@ -228,6 +228,7 @@ void drawImageMatrixTask(void *pvParameters)
   int prevTileZ = -1;
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
+  // Todo could not the complete screen size be used here?
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
   gpsCanvas.createSprite(SCREEN_WIDTH, 128);
   varioCanvas.createSprite(SCREEN_WIDTH/2, 128);
@@ -235,8 +236,8 @@ void drawImageMatrixTask(void *pvParameters)
   ESP_LOGI("drawImageMatrixTask", "Canvas initialized.");
 
   initDirectionIcon(); // Initialize the direction icon once
+  initSoundButton(); // Initialize the sound button once - moved to main.cpp
   ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
-  // initSoundButton(); // Initialize the sound button once - moved to main.cpp
   // ESP_LOGI("drawImageMatrixTask", "Sound button initialized.");
 
   while (true)
@@ -490,6 +491,8 @@ void drawSoundButton()
   soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum
   soundButtonCanvas.drawString(globalSoundEnabled ? "Sound ON" : "Sound OFF", soundButtonWidth / 2, soundButtonHeight / 2);
   soundButtonCanvas.pushSprite(soundButtonX, soundButtonY); // Push directly to M5.Display
+
+  screenBufferCanvas.pushSprite(soundButtonX, soundButtonY); // Also update screenBufferCanvas
 }
 
 void handleSoundButtonPress(int x, int y)
