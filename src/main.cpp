@@ -121,7 +121,6 @@ void setup()
   initSensorTask();     // Initialize the sensor task components
   initGPSTask();        // Initialize the GPS task components
   initVariometerTask(); // Initialize the variometer task components
-  initButtonMonitorTask(); // Initialize the button monitor task components
   initTouchMonitorTask(); // Initialize the touch monitor task components
   initSoundButton();     // Initialize the sound button components
 
@@ -174,16 +173,6 @@ void setup()
       VARIOMETER_TASK_STACK_SIZE,                  // Stack size (bytes)
       NULL,                  // Parameter to pass to function
       1,                     // Task priority (0 to configMAX_PRIORITIES - 1)
-      NULL,             // Task handle
-      APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
-
-  // Create and start the button monitoring task
-  xTaskCreatePinnedToCore(
-      buttonMonitorTask,   // Task function
-      "ButtonMonitorTask", // Name of task
-      BUTTON_TASK_STACK_SIZE,             // Stack size (bytes)
-      NULL,             // Parameter to pass to function
-      1,                // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,             // Task handle
       APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
 
