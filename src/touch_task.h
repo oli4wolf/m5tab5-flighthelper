@@ -7,6 +7,7 @@ extern "C" {
 
 void initTouchMonitorTask();
 void touchMonitorTask(void *pvParameters);
+void handleSoundButtonPress(int x, int y);
 
 #ifdef __cplusplus
 }

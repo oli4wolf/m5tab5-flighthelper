@@ -24,7 +24,12 @@ static int initialTouchDistance = 0;
 static int lastTouchX = 0;
 static int lastTouchY = 0;
 static unsigned long lastTapTime = 0; // For double-tap detection
-static int tapCount = 0; // For double-tap detection
+static int tapCount = 0;              // For double-tap detection
+
+int singleTouchX = 0;
+int singleTouchY = 0;
+int doubleTouchX1 = 0;
+int doubleTouchY1 = 0;
 
 m5::touch_point_t touchPoint[5];
 
@@ -46,60 +51,63 @@ void touchMonitorTask(void *pvParameters)
         int nums = M5.Lcd.getTouchRaw(touchPoint, 5);
         if (nums == 2)
         {
-                // Two fingers detected
-                int x1 = touchPoint[0].x;
-                int y1 = touchPoint[0].y;
-                int x2 = touchPoint[1].x;
-                int y2 = touchPoint[1].y;
+            // Two fingers detected
+            int x1 = touchPoint[0].x;
+            int y1 = touchPoint[0].y;
+            int x2 = touchPoint[1].x;
+            int y2 = touchPoint[1].y;
 
-                int currentTouchDistance = static_cast<int>(sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2)));
+            singleTouchX = -1;
+            singleTouchY = -1;
 
-                if (!globalTwoFingerGestureActive)
+            int currentTouchDistance = static_cast<int>(sqrt(pow(x2 - x1, 2) + pow(y2 - y1, 2)));
+
+            if (!globalTwoFingerGestureActive)
+            {
+                // Start of a new two-finger gesture
+                globalTwoFingerGestureActive = true;
+                initialTouchDistance = currentTouchDistance;
+                ESP_LOGD("touchMonitorTask", "Two-finger gesture started. Initial distance: %d", initialTouchDistance);
+            }
+            else
+            {
+                // Gesture in progress
+                int distanceChange = currentTouchDistance - initialTouchDistance;
+
+                if (distanceChange > ZOOM_THRESHOLD)
                 {
-                    // Start of a new two-finger gesture
-                    globalTwoFingerGestureActive = true;
-                    initialTouchDistance = currentTouchDistance;
-                    ESP_LOGD("touchMonitorTask", "Two-finger gesture started. Initial distance: %d", initialTouchDistance);
+                    // Spread gesture (zoom in)
+                    if (globalManualZoomLevel == 0)
+                    { // If no manual zoom set, use globalTileZ as base
+                        globalManualZoomLevel = globalTileZ;
+                    }
+                    globalManualZoomLevel++;
+                    if (globalManualZoomLevel > MAX_ZOOM_LEVEL)
+                    {
+                        globalManualZoomLevel = MAX_ZOOM_LEVEL;
+                    }
+                    globalTileZ = globalManualZoomLevel;
+                    initialTouchDistance = currentTouchDistance; // Reset initial distance for continuous zooming
+                    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
+                    ESP_LOGI("touchMonitorTask", "Zoom In. New zoom level: %d", globalManualZoomLevel);
                 }
-                else
+                else if (distanceChange < -ZOOM_THRESHOLD)
                 {
-                    // Gesture in progress
-                    int distanceChange = currentTouchDistance - initialTouchDistance;
-
-                    if (distanceChange > ZOOM_THRESHOLD)
-                    {
-                        // Spread gesture (zoom in)
-                        if (globalManualZoomLevel == 0)
-                        { // If no manual zoom set, use globalTileZ as base
-                            globalManualZoomLevel = globalTileZ;
-                        }
-                        globalManualZoomLevel++;
-                        if (globalManualZoomLevel > MAX_ZOOM_LEVEL)
-                        {
-                            globalManualZoomLevel = MAX_ZOOM_LEVEL;
-                        }
-                        globalTileZ = globalManualZoomLevel;
-                        initialTouchDistance = currentTouchDistance; // Reset initial distance for continuous zooming
-                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
-                        ESP_LOGI("touchMonitorTask", "Zoom In. New zoom level: %d", globalManualZoomLevel);
+                    // Pinch gesture (zoom out)
+                    if (globalManualZoomLevel == 0)
+                    { // If no manual zoom set, use globalTileZ as base
+                        globalManualZoomLevel = globalTileZ;
                     }
-                    else if (distanceChange < -ZOOM_THRESHOLD)
+                    globalManualZoomLevel--;
+                    if (globalManualZoomLevel < MIN_ZOOM_LEVEL)
                     {
-                        // Pinch gesture (zoom out)
-                        if (globalManualZoomLevel == 0)
-                        { // If no manual zoom set, use globalTileZ as base
-                            globalManualZoomLevel = globalTileZ;
-                        }
-                        globalManualZoomLevel--;
-                        if (globalManualZoomLevel < MIN_ZOOM_LEVEL)
-                        {
-                            globalManualZoomLevel = MIN_ZOOM_LEVEL;
-                        }
-                        globalTileZ = globalManualZoomLevel;
-                        initialTouchDistance = currentTouchDistance; // Reset initial distance for continuous zooming
-                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
-                        ESP_LOGI("touchMonitorTask", "Zoom Out. New zoom level: %d", globalManualZoomLevel);
+                        globalManualZoomLevel = MIN_ZOOM_LEVEL;
                     }
+                    globalTileZ = globalManualZoomLevel;
+                    initialTouchDistance = currentTouchDistance; // Reset initial distance for continuous zooming
+                    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
+                    ESP_LOGI("touchMonitorTask", "Zoom Out. New zoom level: %d", globalManualZoomLevel);
+                }
             }
         }
         else if (nums == 1)
@@ -108,6 +116,13 @@ void touchMonitorTask(void *pvParameters)
             int y1 = touchPoint[0].y;
             globalTwoFingerGestureActive = false;
             unsigned long currentTime = M5.millis();
+
+            // If it is the first touch after no touch, reset lastTouchX/Y
+            if (singleTouchX == -1 && singleTouchY == -1)
+            {
+                singleTouchX = x1;
+                singleTouchY = y1;
+            }
 
             // Check for double-tap
             if (currentTime - lastTapTime < DOUBLE_TAP_THRESHOLD_MS)
@@ -120,7 +135,8 @@ void touchMonitorTask(void *pvParameters)
             }
             lastTapTime = currentTime; // Update last tap time
 
-            if(tapCount == 2)
+            // Tap behavior
+            if (tapCount == 2)
             {
                 // Double-tap detected
                 globalManualMapMode = false; // Toggle manual map mode
@@ -128,36 +144,53 @@ void touchMonitorTask(void *pvParameters)
                 globalMapOffsetX = 0;
                 globalMapOffsetY = 0;
                 tapCount = 0; // Reset tap count after processing double-tap
+                singleTouchX = -1;
+                singleTouchY = -1;
                 ESP_LOGI("touchMonitorTask", "Double-tap detected. Manual map mode: %s", globalManualMapMode ? "ON" : "OFF");
             }
-            // Todo this can not work this way
+
             // double tap toggle to gps mode.
-            // single touch drag to move map and enter manual mode.
+            // Single Touch is either a drag or a button press.
             else
             {
-                globalManualMapMode = true; // Enter manual map mode on single touch
-                // Single touch drag for panning
-                if (lastTouchX != 0 || lastTouchY != 0)
-                {
-                    int deltaX = x1 - lastTouchX;
-                    int deltaY = y1 - lastTouchY;
 
-                        globalMapOffsetX += deltaX;
-                        globalMapOffsetY += deltaY;
-                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
-                        ESP_LOGD("touchMonitorTask", "Panning map. OffsetX: %d, OffsetY: %d", globalMapOffsetX, globalMapOffsetY);
-                }
+                // Todo Button press detection could be added here.
+                handleSoundButtonPress(x1, y1);
             }
-
-            handleSoundButtonPress(touchPoint[0].x, touchPoint[0].y); // Keep existing sound button functionality
         }
         else // nums == 0 (no touch)
         {
+            // No Touch is also a release of the fingers.
+            // Map draged detected.
+            int x1 = touchPoint[0].x;
+            int y1 = touchPoint[0].y;
+            // Single touch drag for panning
+            if (singleTouchX != -1 || singleTouchY != -1)
+            {
+                globalManualMapMode = true; // Enter manual map mode on single touch
+                int deltaX = x1 - singleTouchX;
+                int deltaY = y1 - singleTouchY;
+
+                globalMapOffsetX += deltaX;
+                globalMapOffsetY += deltaY;
+                xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
+                ESP_LOGD("touchMonitorTask", "Panning map. OffsetX: %d, OffsetY: %d", globalMapOffsetX, globalMapOffsetY);
+            }
+
+            // 1.B map drag released reset the singleTouchX/Y positions.
+            singleTouchX = -1;
+            singleTouchY = -1;
+
+            // 2. two finger released.
+            // 2.A zoom level to be adapted.
+
             globalTwoFingerGestureActive = false;
             // If no touch, and we were in manual map mode, reset tapCount if enough time has passed
-            if (globalManualMapMode && tapCount > 0) {
+            if (globalManualMapMode && tapCount > 0)
+            {
                 unsigned long currentTime = M5.millis();
-                if (currentTime - lastTapTime > DOUBLE_TAP_THRESHOLD_MS) {
+                if (currentTime - lastTapTime > DOUBLE_TAP_THRESHOLD_MS)
+                {
                     tapCount = 0; // Reset tap count if too much time has passed
                 }
             }
