@@ -8,7 +8,6 @@ const int SCREEN_WIDTH = 720; // Width of the M5Stack screen
 const int SCREEN_HEIGHT = 1280; // Height of the M5Stack screen
 
 // Configuration
-const int TILE_SIZE = 256; // Standard size for map tiles (e.g., Swisstopo, OpenStreetMap)
 const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality
 const bool USE_TESTDATA = true; // Set to true to use test GPS data when no valid GPS fix is available
 extern bool globalSoundEnabled; // Global variable to control sound output at runtime
