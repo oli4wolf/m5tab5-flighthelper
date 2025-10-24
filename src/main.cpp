@@ -11,12 +11,17 @@
 #include "tile_calculator.h" // Include the new tile calculator header
 #include "gui.h"             // Include the new GUI header
 #include "variometer_task.h" // Include the new variometer task header
-#include "button_task.h"     // Include the new button task header
+#include "touch_task.h"      // Include the new touch task header
 #include "config.h"         // Include configuration constants
 
 // global variables (define variables to be used throughout the program)
 EventGroupHandle_t xGuiUpdateEventGroup; // Declare the event group handle
 bool globalSoundEnabled = true; // Define global sound enable flag
+int globalManualZoomLevel = 0; // Define global manual zoom level, initialized to 0
+bool globalTwoFingerGestureActive = false; // New: Flag for active two-finger gesture
+int globalMapOffsetX = 0; // New: Manual map offset in pixels
+int globalMapOffsetY = 0; // New: Manual map offset in pixels
+bool globalManualMapMode = false; // New: Flag to indicate if map is in manual drag mode
 float globalPressure;
 float globalTemperature;
 SemaphoreHandle_t xSensorMutex;
@@ -30,6 +35,7 @@ extern SemaphoreHandle_t xVariometerMutex;
 double globalLatitude = 46.947597;
 double globalLongitude = 7.440434;
 double globalAltitude = 542.5; // Initial altitude set to Bern, Switzerland
+bool globalTestdata = false; // Flag to indicate if test data is being used
 unsigned long globalSatellites;
 unsigned long globalHDOP;
 bool globalValid = false; // Indicates if a valid GPS fix is available
@@ -42,7 +48,7 @@ SemaphoreHandle_t xGPSMutex;
 SemaphoreHandle_t xPositionMutex;
 int globalTileX;
 int globalTileY;
-int globalTileZ;
+int globalTileZ = DEFAULT_MAP_ZOOM_LEVEL; // Initialize to default zoom level
 
 extern const int TILE_SIZE; // Standard size for map tiles (e.g., OpenStreetMap)
 
@@ -62,6 +68,7 @@ extern const int GPS_TASK_STACK_SIZE;
 extern const int VARIOMETER_TASK_STACK_SIZE;
 extern const int IMAGE_MATRIX_TASK_STACK_SIZE;
 extern const int BUTTON_TASK_STACK_SIZE; // New: Stack size for button monitoring task
+extern const int TOUCH_TASK_STACK_SIZE; // New: Stack size for touch monitoring task
 
 // Function to draw a Jpeg image from SD card
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels)
@@ -114,7 +121,7 @@ void setup()
   initSensorTask();     // Initialize the sensor task components
   initGPSTask();        // Initialize the GPS task components
   initVariometerTask(); // Initialize the variometer task components
-  initButtonMonitorTask(); // Initialize the button monitor task components
+  initTouchMonitorTask(); // Initialize the touch monitor task components
   initSoundButton();     // Initialize the sound button components
 
   xSensorMutex = xSemaphoreCreateMutex();     // Initialize the sensor mutex
@@ -150,6 +157,7 @@ void setup()
       APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
 
   // Create and start the GPS reading task
+  ESP_LOGI("main.cpp", "Creating GPSReadTask");
   xTaskCreatePinnedToCore(
       gpsReadTask,   // Task function
       "GPSReadTask", // Name of task
@@ -169,11 +177,11 @@ void setup()
       NULL,             // Task handle
       APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
 
-  // Create and start the button monitoring task
+  // Create and start the touch monitoring task
   xTaskCreatePinnedToCore(
-      buttonMonitorTask,   // Task function
-      "ButtonMonitorTask", // Name of task
-      BUTTON_TASK_STACK_SIZE,             // Stack size (bytes)
+      touchMonitorTask,   // Task function
+      "TouchMonitorTask", // Name of task
+      TOUCH_TASK_STACK_SIZE,             // Stack size (bytes)
       NULL,             // Parameter to pass to function
       1,                // Task priority (0 to configMAX_PRIORITIES - 1)
       NULL,             // Task handle

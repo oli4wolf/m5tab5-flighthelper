@@ -6,7 +6,7 @@ struct coord
     double lon;
 };
 
-std::vector<coord> data = {
+std::vector<coord> gpsTestData = {
     coord{46.93979, 7.43599},
     coord{46.95016, 7.43883},
     coord{46.94728, 7.44402},

@@ -22,9 +22,13 @@ extern SemaphoreHandle_t xGPSMutex;             // Declare extern here
 extern double globalLatitude;                   // Declare extern here
 extern double globalLongitude;                  // Declare extern here
 extern bool globalValid;                        // Declare extern here
+extern bool globalTestdata;                     // Declare extern here
 extern double globalSpeed;                      // Declare extern here
 extern double globalAltitude;                   // Declare extern here
 extern double globalDirection;                  // Declare extern here
+extern int globalMapOffsetX;                     // New: Manual map offset in pixels
+extern int globalMapOffsetY;                     // New: Manual map offset in pixels
+extern bool globalManualMapMode;                // New: Flag to indicate if map is in manual drag mode
 
 extern SemaphoreHandle_t xSensorMutex;
 extern float globalPressure;
@@ -123,7 +127,20 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
 {
   int pixelOffsetX = 0;
   int pixelOffsetY = 0;
-  latLngToPixelOffset(currentLatitude, currentLongitude, currentTileZ, &pixelOffsetX, &pixelOffsetY);
+
+  if (globalManualMapMode) {
+      // In manual mode, the "center" is effectively shifted by the manual offsets
+      // We need to calculate the tile and pixel offset based on a hypothetical center
+      // that would result in the current manual offset.
+      // This is a simplification; a more robust solution might involve
+      // converting pixel offsets back to lat/lng or managing a "view center" lat/lng.
+      // For now, we'll adjust the drawOriginX/Y directly.
+      // The current (pixelOffsetX, pixelOffsetY) from GPS is still relevant for the GPS dot,
+      // but the map itself will be drawn relative to the manual offset.
+      latLngToPixelOffset(currentLatitude, currentLongitude, currentTileZ, &pixelOffsetX, &pixelOffsetY);
+  } else {
+      latLngToPixelOffset(currentLatitude, currentLongitude, currentTileZ, &pixelOffsetX, &pixelOffsetY);
+  }
 
   // Calculate the top-left coordinates for the drawing grid
   // The central tile (globalTileX, globalTileY) will be at index [DRAW_GRID_CENTER_OFFSET][DRAW_GRID_CENTER_OFFSET] in the DRAW_GRID_DIMENSION x DRAW_GRID_DIMENSION array
@@ -137,7 +154,7 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
     {
       int tileToLoadX = currentTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
       int tileToLoadY = currentTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
-      sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", currentTileZ, tileToLoadX, tileToLoadY);
+      sprintf(tilePaths[y][x], "/maps/pixelkarte-farbe/%d/%d/%d.jpeg", currentTileZ, tileToLoadX, tileToLoadY);
       if (x == SCREEN_BUFFER_CENTER_OFFSET && y == SCREEN_BUFFER_CENTER_OFFSET) {
           strncpy(globalCurrentCenterTilePath, tilePaths[y][x], TILE_PATH_MAX_LENGTH - 1);
           globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
@@ -152,6 +169,12 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
   // (screenBufferCanvas.width() / 2 - pixelOffsetX, screenBufferCanvas.height() / 2 - pixelOffsetY)
   int drawOriginX = (screenBufferCanvas.width() / 2) - pixelOffsetX;
   int drawOriginY = (screenBufferCanvas.height() / 2) - pixelOffsetY;
+
+  // Apply manual offsets if in manual map mode
+  if (globalManualMapMode) {
+      drawOriginX += globalMapOffsetX;
+      drawOriginY += globalMapOffsetY;
+  }
 
   screenBufferCanvas.clear(TFT_BLACK); // Clear the screen buffer
   ESP_LOGD("updateTiles", "Performing full redraw.");
@@ -175,7 +198,7 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
 
   // Draw arrow head (triangle)
   drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
-  // drawSoundButton(screenBufferCanvas); // Sound button now drawn directly to M5.Display
+  drawSoundButton(); // Sound button now drawn directly to M5.Display
 
   // Calculate offsets to center the screenBufferCanvas on the M5.Display.
   // The screenBufferCanvas is larger than the display, so negative offsets are expected.
@@ -199,6 +222,7 @@ void drawImageMatrixTask(void *pvParameters)
   double currentLongitude = 0;
   double currentSpeed = 0;
   bool currentValid = false;
+  bool currentTestdata = false;
 
   // Store previous tile coordinates to detect changes
   int prevTileX = -1;
@@ -206,6 +230,7 @@ void drawImageMatrixTask(void *pvParameters)
   int prevTileZ = -1;
 
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
+  // Todo could not the complete screen size be used here?
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
   gpsCanvas.createSprite(SCREEN_WIDTH, 128);
   varioCanvas.createSprite(SCREEN_WIDTH/2, 128);
@@ -213,8 +238,8 @@ void drawImageMatrixTask(void *pvParameters)
   ESP_LOGI("drawImageMatrixTask", "Canvas initialized.");
 
   initDirectionIcon(); // Initialize the direction icon once
+  initSoundButton(); // Initialize the sound button once - moved to main.cpp
   ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
-  // initSoundButton(); // Initialize the sound button once - moved to main.cpp
   // ESP_LOGI("drawImageMatrixTask", "Sound button initialized.");
 
   while (true)
@@ -226,47 +251,40 @@ void drawImageMatrixTask(void *pvParameters)
       currentLongitude = globalLongitude;
       currentSpeed = globalSpeed;
       currentValid = globalValid;
+      currentTestdata = globalTestdata;
       xSemaphoreGive(xGPSMutex);
     }
 
-    if (currentValid || USE_TESTDATA) // Only update tiles if GPS is valid or if using test data
+    if (!globalManualMapMode && (currentValid || (USE_TESTDATA && currentTestdata))) // Use Testdata if nothing else.
     {
-      //Turn off testdata if there are real GPS data.
-    if(USE_TESTDATA && !currentValid)
+        // Calculate tile coordinates
+        currentTileZ = globalTileZ; // Use global zoom level
+        latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
+
+        // Update global tile coordinates
+        if (xSemaphoreTake(xPositionMutex, portMAX_DELAY) == pdTRUE)
+        {
+            globalTileX = currentTileX;
+            globalTileY = currentTileY;
+            globalTileZ = currentTileZ;
+            ESP_LOGV("TileCalc", "Task Tile X: %d, Tile Y: %d, Zoom: %d", globalTileX, globalTileY, globalTileZ);
+            xSemaphoreGive(xPositionMutex);
+        }
+
+        // Only set map update event if the center tile has changed
+        if (currentTileX != prevTileX || currentTileY != prevTileY || currentTileZ != prevTileZ)
+        {
+            xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY); // Signal GUI task for map update
+            prevTileX = currentTileX;
+            prevTileY = currentTileY;
+            prevTileZ = currentTileZ;
+        }
+    }
+    else if (!globalManualMapMode) // If not in manual mode and GPS is invalid
     {
-      currentLatitude = 46.947597;
-      currentLongitude = 7.440434;
-      currentSpeed = 4.0;
-      gpsCanvas.printf("Using test data\n");
+        // Todo Use Testdata or handle invalid GPS gracefully
     }
-
-      // Calculate tile coordinates
-      currentTileZ = calculateZoomLevel(currentSpeed, M5.Display.width(), M5.Display.height());
-      latLngToTile(currentLatitude, currentLongitude, currentTileZ, &currentTileX, &currentTileY);
-
-      // Update global tile coordinates
-      if (xSemaphoreTake(xPositionMutex, portMAX_DELAY) == pdTRUE)
-      {
-        globalTileX = currentTileX;
-        globalTileY = currentTileY;
-        globalTileZ = currentTileZ;
-        ESP_LOGV("TileCalc", "Task Tile X: %d, Tile Y: %d, Zoom: %d", globalTileX, globalTileY, globalTileZ);
-        xSemaphoreGive(xPositionMutex);
-      }
-
-      // Only set map update event if the center tile has changed
-      if (currentTileX != prevTileX || currentTileY != prevTileY || currentTileZ != prevTileZ)
-      {
-        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY); // Signal GUI task for map update
-        prevTileX = currentTileX;
-        prevTileY = currentTileY;
-        prevTileZ = currentTileZ;
-      }
-    }
-    else
-    {
-      // Todo Use Testdata or handle invalid GPS gracefully
-    }
+    // If in globalManualMapMode, the map is updated by touch_task, so no GPS-based update here.
 
     // Wait for GUI update events
     EventBits_t uxBits = xEventGroupWaitBits(
@@ -279,6 +297,8 @@ void drawImageMatrixTask(void *pvParameters)
 
     if ((uxBits & GUI_EVENT_MAP_DATA_READY) != 0)
     {
+      ESP_LOGD("drawImageMatrixTask", "updateTiles: %.6f, %.6f, Z:%d, X:%d, Y:%d, Dir:%.2f",
+               currentLatitude, currentLongitude, currentTileZ, currentTileX, currentTileY, globalDirection);
       updateTiles(currentLatitude, currentLongitude, currentTileZ, currentTileX, currentTileY, globalDirection);
     }
 
@@ -304,7 +324,7 @@ void drawImageMatrixTask(void *pvParameters)
 // Implementations for text zone update functions
 void updateDisplayWithVarioTelemetry()
 {
-  ESP_LOGD("updateDisplayWithVarioTelemetry", "Task started.");
+  //ESP_LOGD("updateDisplayWithVarioTelemetry", "Task started.");
   float currentPressure = 0;
   float currentTemperature = 0;
   float currentBaroAltitude = 0;
@@ -368,7 +388,7 @@ void updateDisplayWithVarioTelemetry()
 // Implementations for text zone update functions
 void updateDisplayWithGPSTelemetry()
 {
-  ESP_LOGD("updateDisplayWithGPSTelemetry", "Task started.");
+  //ESP_LOGD("updateDisplayWithGPSTelemetry", "Task started.");
   double currentLatitude = 0;
   double currentLongitude = 0;
   double currentSpeed = 0;
@@ -386,7 +406,7 @@ void updateDisplayWithGPSTelemetry()
     currentHDOP = globalHDOP;
     xSemaphoreGive(xGPSMutex);
   }
-
+ 
   gpsCanvas.setFont(&fonts::Font2);
   gpsCanvas.setTextSize(2);
   gpsCanvas.setTextColor(TFT_WHITE);
@@ -397,7 +417,7 @@ void updateDisplayWithGPSTelemetry()
     gpsCanvas.printf("Waiting for GPS fix...\n");
     gpsCanvas.printf("Sats: %lu\n", currentSatellites);
     gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
-
+ 
     // Duplicate assignment, will be removed in fix
     ESP_LOGW("GPS", "No valid GPS fix.");
   }else{
@@ -467,6 +487,8 @@ void drawSoundButton()
   soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum
   soundButtonCanvas.drawString(globalSoundEnabled ? "Sound ON" : "Sound OFF", soundButtonWidth / 2, soundButtonHeight / 2);
   soundButtonCanvas.pushSprite(soundButtonX, soundButtonY); // Push directly to M5.Display
+
+  screenBufferCanvas.pushSprite(soundButtonX, soundButtonY); // Also update screenBufferCanvas
 }
 
 void handleSoundButtonPress(int x, int y)
