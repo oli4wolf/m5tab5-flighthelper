@@ -17,6 +17,8 @@ void initTileCalculator();
 int calculateZoomLevel(double speed_kmph, int display_width, int display_height);
 void latLngToTile(double lat, double lng, int zoom, int* tileX, int* tileY);
 void latLngToPixelOffset(double lat, double lng, int zoom, int* pixelX, int* pixelY);
+void latLngToGlobalPixel(double lat, double lng, int zoom, long* pixelX, long* pixelY);
+void pixelToLatLng(int pixelX, int pixelY, int zoom, double* lat, double* lng);
 
 #ifdef __cplusplus
 }

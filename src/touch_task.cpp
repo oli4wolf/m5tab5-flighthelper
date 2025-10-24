@@ -7,6 +7,7 @@
 #include "config.h"
 #include "gui.h"      // For xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY, and handleSoundButtonPress
 #include "gps_task.h" // For globalTileZ
+#include "tile_calculator.h" // For pixelToLatLng
 
 // Global variables declared in main.cpp
 extern int globalTileZ;
@@ -15,9 +16,9 @@ extern int globalTileZ;
 extern EventGroupHandle_t xGuiUpdateEventGroup;
 extern bool globalTwoFingerGestureActive;
 extern int globalManualZoomLevel;
-extern int globalMapOffsetX;
-extern int globalMapOffsetY;
 extern bool globalManualMapMode;
+extern double globalLatitude;
+extern double globalLongitude;
 
 // Internal variables for touch gesture
 static int initialTouchDistance = 0;
@@ -145,9 +146,6 @@ void touchMonitorTask(void *pvParameters)
                 {
                     // Double-tap detected
                     globalManualMapMode = false; // Toggle manual map mode
-                    // Reset manual offsets when exiting manual mode
-                    globalMapOffsetX = 0;
-                    globalMapOffsetY = 0;
                     tapCount = 0; // Reset tap count after processing double-tap
                     singleTouchX = -1;
                     singleTouchY = -1;
@@ -176,11 +174,32 @@ void touchMonitorTask(void *pvParameters)
                     globalManualMapMode = true; // Enter manual map mode on single touch
                     int deltaX = x1 - singleTouchX;
                     int deltaY = y1 - singleTouchY;
+
+                    // Convert pixel offset to lat/lon change
+                    double currentLat = globalLatitude;
+                    double currentLng = globalLongitude;
+                    int currentZoom = globalTileZ;
+                    ESP_LOGD("touchMonitorTask", "Current Lat/Lng before pan - Lat: %.6f, Lng: %.6f", currentLat, currentLng);
  
-                    globalMapOffsetX += deltaX;
-                    globalMapOffsetY += deltaY;
+                    // Calculate the current global pixel coordinates
+                    long currentGlobalPixelX, currentGlobalPixelY;
+                    latLngToGlobalPixel(currentLat, currentLng, currentZoom, &currentGlobalPixelX, &currentGlobalPixelY);
+                    ESP_LOGD("touchMonitorTask", "Current Global Pixel - X: %ld, Y: %ld", currentGlobalPixelX, currentGlobalPixelY);
+ 
+                    // Apply the drag delta to the global pixel coordinates
+                    long newGlobalPixelX = currentGlobalPixelX - deltaX; // Subtract delta because dragging moves the map, not the GPS point
+                    long newGlobalPixelY = currentGlobalPixelY - deltaY;
+                    ESP_LOGD("touchMonitorTask", "New Global Pixel (after drag) - X: %ld, Y: %ld", newGlobalPixelX, newGlobalPixelY);
+ 
+                    // Convert the new global pixel coordinates back to lat/lon
+                    double newLat, newLng;
+                    pixelToLatLng(newGlobalPixelX, newGlobalPixelY, currentZoom, &newLat, &newLng);
+                    ESP_LOGD("touchMonitorTask", "New Lat/Lng after pan - Lat: %.6f, Lng: %.6f", newLat, newLng);
+                    globalLatitude = newLat;
+                    globalLongitude = newLng;
+
                     xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
-                    ESP_LOGD("touchMonitorTask", "Panning map. OffsetX: %d, OffsetY: %d", globalMapOffsetX, globalMapOffsetY);
+                    ESP_LOGD("touchMonitorTask", "Map panned to new Lat: %.6f, Lng: %.6f", globalLatitude, globalLongitude);
                 }
             }
  

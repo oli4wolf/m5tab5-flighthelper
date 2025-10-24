@@ -13,8 +13,6 @@ const bool USE_TESTDATA = true; // Set to true to use test GPS data when no vali
 extern bool globalSoundEnabled; // Global variable to control sound output at runtime
 extern bool globalTwoFingerGestureActive; // New: Flag for active two-finger gesture
 extern int globalManualZoomLevel; // New: Manually set zoom level
-extern int globalMapOffsetX; // New: Manual map offset in pixels
-extern int globalMapOffsetY; // New: Manual map offset in pixels
 extern bool globalManualMapMode; // New: Flag to indicate if map is in manual drag mode
 
 // Zoom Constants

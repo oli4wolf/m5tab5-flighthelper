@@ -19,8 +19,6 @@ EventGroupHandle_t xGuiUpdateEventGroup; // Declare the event group handle
 bool globalSoundEnabled = true; // Define global sound enable flag
 int globalManualZoomLevel = 0; // Define global manual zoom level, initialized to 0
 bool globalTwoFingerGestureActive = false; // New: Flag for active two-finger gesture
-int globalMapOffsetX = 0; // New: Manual map offset in pixels
-int globalMapOffsetY = 0; // New: Manual map offset in pixels
 bool globalManualMapMode = false; // New: Flag to indicate if map is in manual drag mode
 float globalPressure;
 float globalTemperature;

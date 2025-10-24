@@ -32,3 +32,21 @@ void latLngToPixelOffset(double lat, double lng, int zoom, int* pixelX, int* pix
     *pixelX = (int)((tileX_double - tileX_int) * TILE_SIZE);
     *pixelY = (int)((tileY_double - tileY_int) * TILE_SIZE);
 }
+
+void pixelToLatLng(int pixelX, int pixelY, int zoom, double* lat, double* lng) {
+    double n = pow(2.0, zoom);
+    double lng_deg = (pixelX / (double)TILE_SIZE / n * 360.0) - 180.0;
+    double lat_rad = atan(sinh(M_PI * (1 - 2 * pixelY / (double)TILE_SIZE / n)));
+    double lat_deg = lat_rad * 180.0 / M_PI;
+    *lat = lat_deg;
+    *lng = lng_deg;
+}
+
+// Function to convert latitude and longitude to global pixel coordinates
+void latLngToGlobalPixel(double lat, double lng, int zoom, long* pixelX, long* pixelY) {
+    double lat_rad = lat * M_PI / 180.0;
+    double n = pow(2.0, zoom);
+
+    *pixelX = (long)floor(((lng + 180.0) / 360.0 * n) * TILE_SIZE);
+    *pixelY = (long)floor(((1.0 - log(tan(lat_rad) + 1.0 / cos(lat_rad)) / M_PI) / 2.0 * n) * TILE_SIZE);
+}

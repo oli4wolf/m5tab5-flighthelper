@@ -68,8 +68,6 @@ void gpsReadTask(void *pvParameters)
                             globalSpeed = gps.speed.kmph(); // Update global speed
                             globalTime = gps.time.value();
                             globalValid = true;   // GPS fix is valid
-                            globalMapOffsetX = 0; // Reset manual offsets on valid fix
-                            globalMapOffsetY = 0;
                             globalTestdata = false; // Clear test data flag
 
                             ESP_LOGI("GPS", "Updated GPS Data: Lat %.6f, Lon %.6f, Alt %.2f m, Speed %.2f km/h, Dir %.2f deg, Time %lu",
