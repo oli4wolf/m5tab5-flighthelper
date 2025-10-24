@@ -55,30 +55,36 @@ void gpsReadTask(void *pvParameters)
             char gpsChar = gpsSerial.read();
             if (gps.encode(gpsChar))
             {
-                if (gps.location.isValid() && !globalManualMapMode) // Check only for validity, not necessarily update
+                if (gps.location.isValid())
                 {
-                    if (gps.location.isUpdated()) // Only update global variables if location is new
+                    ESP_LOGD("GPS", "GPS location is valid. globalManualMapMode: %d", globalManualMapMode);
+                    if (!globalManualMapMode) // Check only for validity, not necessarily update
                     {
-                        if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                        if (gps.location.isUpdated()) // Only update global variables if location is new
                         {
-                            globalLatitude = gps.location.lat();
-                            globalLongitude = gps.location.lng();
-                            globalAltitude = gps.altitude.meters();
-                            globalDirection = gps.course.deg();
-                            globalSpeed = gps.speed.kmph(); // Update global speed
-                            globalTime = gps.time.value();
-                            globalValid = true;   // GPS fix is valid
-                            globalTestdata = false; // Clear test data flag
+                            if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                            {
+                                globalLatitude = gps.location.lat();
+                                globalLongitude = gps.location.lng();
+                                globalAltitude = gps.altitude.meters();
+                                globalDirection = gps.course.deg();
+                                globalSpeed = gps.speed.kmph(); // Update global speed
+                                globalTime = gps.time.value();
+                                globalValid = true;   // GPS fix is valid
+                                globalTestdata = false; // Clear test data flag
 
-                            ESP_LOGI("GPS", "Updated GPS Data: Lat %.6f, Lon %.6f, Alt %.2f m, Speed %.2f km/h, Dir %.2f deg, Time %lu",
-                                     globalLatitude, globalLongitude, globalAltitude, globalSpeed, globalDirection, globalTime);
-                    
-                            xSemaphoreGive(xGPSMutex);
-                            xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
+                                ESP_LOGI("GPS", "Updated GPS Data: Lat %.6f, Lon %.6f, Alt %.2f m, Speed %.2f km/h, Dir %.2f deg, Time %lu",
+                                         globalLatitude, globalLongitude, globalAltitude, globalSpeed, globalDirection, globalTime);
+                        
+                                xSemaphoreGive(xGPSMutex);
+                                xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
+                            }
                         }
-                        }
-                    // If location is valid but not updated, globalValid should remain true.
-                    // No action needed here as globalValid is already true from previous valid fix.
+                        // If location is valid but not updated, globalValid should remain true.
+                        // No action needed here as globalValid is already true from previous valid fix.
+                    } else {
+                        ESP_LOGD("GPS", "GPS location valid but not updating global coords due to globalManualMapMode.");
+                    }
                 }
                 else
                 {
@@ -88,6 +94,7 @@ void gpsReadTask(void *pvParameters)
                         globalValid = false; // No valid GPS fix
                         xSemaphoreGive(xGPSMutex);
                     }
+                    ESP_LOGD("GPS", "GPS location is NOT valid. globalValid set to false.");
                 }
             }
             // nothing to do if not a valid sentence
@@ -113,8 +120,12 @@ void gpsReadTask(void *pvParameters)
                         }
                         xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
                     }
+                } else if (USE_TESTDATA && globalManualMapMode) {
+                    ESP_LOGD("GPS", "Test data available but not updating global coords due to globalManualMapMode.");
+                } else if (USE_TESTDATA && globalValid) {
+                    ESP_LOGD("GPS", "Test data available but not updating global coords because globalValid is true.");
                 }
-
+ 
         vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
     }
 }
