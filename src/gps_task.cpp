@@ -13,8 +13,6 @@ extern double globalLatitude;
 extern double globalLongitude;
 extern double globalAltitude;
 extern bool globalTestdata; // Flag to indicate if test data is being used
-extern unsigned long globalSatellites;
-extern unsigned long globalHDOP;
 extern bool globalValid; // Indicates if a valid GPS fix is available
 extern double globalDirection;
 extern uint32_t globalTime;
@@ -66,20 +64,21 @@ void gpsReadTask(void *pvParameters)
                             globalLatitude = gps.location.lat();
                             globalLongitude = gps.location.lng();
                             globalAltitude = gps.altitude.meters();
-                            globalSatellites = gps.satellites.value();
                             globalDirection = gps.course.deg();
                             globalSpeed = gps.speed.kmph(); // Update global speed
                             globalTime = gps.time.value();
-                            globalHDOP = gps.hdop.value();
                             globalValid = true;   // GPS fix is valid
                             globalMapOffsetX = 0; // Reset manual offsets on valid fix
                             globalMapOffsetY = 0;
                             globalTestdata = false; // Clear test data flag
- 
+
+                            ESP_LOGI("GPS", "Updated GPS Data: Lat %.6f, Lon %.6f, Alt %.2f m, Speed %.2f km/h, Dir %.2f deg, Time %lu",
+                                     globalLatitude, globalLongitude, globalAltitude, globalSpeed, globalDirection, globalTime);
+                    
                             xSemaphoreGive(xGPSMutex);
                             xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
                         }
-                    }
+                        }
                     // If location is valid but not updated, globalValid should remain true.
                     // No action needed here as globalValid is already true from previous valid fix.
                 }

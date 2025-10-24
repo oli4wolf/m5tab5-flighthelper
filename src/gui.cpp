@@ -393,8 +393,6 @@ void updateDisplayWithGPSTelemetry()
   double currentLongitude = 0;
   double currentSpeed = 0;
   double currentAltitude = 0;
-  unsigned long currentSatellites;
-  unsigned long currentHDOP;
 
   if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
   {
@@ -402,8 +400,6 @@ void updateDisplayWithGPSTelemetry()
     currentLongitude = globalLongitude;
     currentSpeed = globalSpeed;
     currentAltitude = globalAltitude;
-    currentSatellites = globalSatellites;
-    currentHDOP = globalHDOP;
     xSemaphoreGive(xGPSMutex);
   }
  
@@ -415,8 +411,6 @@ void updateDisplayWithGPSTelemetry()
   {
     gpsCanvas.clear(TFT_DARKGREY);
     gpsCanvas.printf("Waiting for GPS fix...\n");
-    gpsCanvas.printf("Sats: %lu\n", currentSatellites);
-    gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
  
     // Duplicate assignment, will be removed in fix
     ESP_LOGW("GPS", "No valid GPS fix.");

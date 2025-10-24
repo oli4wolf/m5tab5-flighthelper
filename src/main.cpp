@@ -36,8 +36,6 @@ double globalLatitude = 46.947597;
 double globalLongitude = 7.440434;
 double globalAltitude = 542.5; // Initial altitude set to Bern, Switzerland
 bool globalTestdata = false; // Flag to indicate if test data is being used
-unsigned long globalSatellites;
-unsigned long globalHDOP;
 bool globalValid = false; // Indicates if a valid GPS fix is available
 double globalDirection;
 double globalSpeed; // Added for GPS speed in km/h
