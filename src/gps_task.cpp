@@ -51,7 +51,7 @@ void gpsReadTask(void *pvParameters)
 
     for (;;)
     {
-        ESP_LOGI("GPS_TASK", "gpsReadTask started iteration");
+        ESP_LOGD("GPS_TASK", "gpsReadTask started iteration");
         while (gpsSerial.available() > 0)
         {
             char gpsChar = gpsSerial.read();
@@ -119,6 +119,5 @@ void gpsReadTask(void *pvParameters)
                 }
 
         vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
-        ESP_LOGI("GPS_TASK", "gpsReadTask ended iteration");
     }
 }
