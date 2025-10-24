@@ -57,37 +57,45 @@ void gpsReadTask(void *pvParameters)
             char gpsChar = gpsSerial.read();
             if (gps.encode(gpsChar))
             {
-
-                if (gps.location.isValid() && gps.location.isUpdated() && !globalManualMapMode)
-                { // Only update if valid and not in manual map mode
-                    if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                if (gps.location.isValid() && !globalManualMapMode) // Check only for validity, not necessarily update
+                {
+                    if (gps.location.isUpdated()) // Only update global variables if location is new
                     {
-                        globalLatitude = gps.location.lat();
-                        globalLongitude = gps.location.lng();
-                        globalAltitude = gps.altitude.meters();
-                        globalSatellites = gps.satellites.value();
-                        globalDirection = gps.course.deg();
-                        globalSpeed = gps.speed.kmph(); // Update global speed
-                        globalTime = gps.time.value();
-                        globalHDOP = gps.hdop.value();
-                        globalValid = true;   // GPS fix is valid
-                        globalMapOffsetX = 0; // Reset manual offsets on valid fix
-                        globalMapOffsetY = 0;
-                        globalTestdata = false; // Clear test data flag
-
-                        ESP_LOGI("GPS", "Real GPS fix obtained: Lat %.8f, Lon %.8f", globalLatitude, globalLongitude);
-
-                        xSemaphoreGive(xGPSMutex);
-                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
+                        if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                        {
+                            globalLatitude = gps.location.lat();
+                            globalLongitude = gps.location.lng();
+                            globalAltitude = gps.altitude.meters();
+                            globalSatellites = gps.satellites.value();
+                            globalDirection = gps.course.deg();
+                            globalSpeed = gps.speed.kmph(); // Update global speed
+                            globalTime = gps.time.value();
+                            globalHDOP = gps.hdop.value();
+                            globalValid = true;   // GPS fix is valid
+                            globalMapOffsetX = 0; // Reset manual offsets on valid fix
+                            globalMapOffsetY = 0;
+                            globalTestdata = false; // Clear test data flag
+ 
+                            xSemaphoreGive(xGPSMutex);
+                            xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
+                        }
                     }
+                    // If location is valid but not updated, globalValid should remain true.
+                    // No action needed here as globalValid is already true from previous valid fix.
                 }
                 else
                 {
-                    globalValid = false; // No valid GPS fix
+                    // If gps.location.isValid() is false, then there is no valid GPS fix.
+                    if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                    {
+                        globalValid = false; // No valid GPS fix
+                        xSemaphoreGive(xGPSMutex);
+                    }
                 }
             }
-            else
-            {
+            // nothing to do if not a valid sentence
+        }
+            
                 // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
                 static unsigned long lastTestDataUpdateTime = 0;
                 const unsigned long TESTDATA_UPDATE_INTERVAL_MS = 15000; // 15 seconds
@@ -109,8 +117,6 @@ void gpsReadTask(void *pvParameters)
                         xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
                     }
                 }
-            }
-        }
 
         vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
         ESP_LOGI("GPS_TASK", "gpsReadTask ended iteration");

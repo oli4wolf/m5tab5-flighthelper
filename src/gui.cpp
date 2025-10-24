@@ -406,7 +406,7 @@ void updateDisplayWithGPSTelemetry()
     currentHDOP = globalHDOP;
     xSemaphoreGive(xGPSMutex);
   }
-
+ 
   gpsCanvas.setFont(&fonts::Font2);
   gpsCanvas.setTextSize(2);
   gpsCanvas.setTextColor(TFT_WHITE);
@@ -417,7 +417,7 @@ void updateDisplayWithGPSTelemetry()
     gpsCanvas.printf("Waiting for GPS fix...\n");
     gpsCanvas.printf("Sats: %lu\n", currentSatellites);
     gpsCanvas.printf("HDOP: %lu\n", currentHDOP);
-
+ 
     // Duplicate assignment, will be removed in fix
     ESP_LOGW("GPS", "No valid GPS fix.");
   }else{
