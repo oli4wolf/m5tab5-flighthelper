@@ -12,6 +12,7 @@
 extern double globalLatitude;
 extern double globalLongitude;
 extern double globalAltitude;
+extern bool globalTestdata; // Flag to indicate if test data is being used
 extern unsigned long globalSatellites;
 extern unsigned long globalHDOP;
 extern bool globalValid; // Indicates if a valid GPS fix is available
@@ -50,15 +51,17 @@ void gpsReadTask(void *pvParameters)
 
     for (;;)
     {
+        ESP_LOGI("GPS_TASK", "gpsReadTask started iteration");
         while (gpsSerial.available() > 0)
         {
             char gpsChar = gpsSerial.read();
             if (gps.encode(gpsChar))
             {
-                if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
-                {
-                    if (gps.location.isValid() && !globalManualMapMode)
-                    { // Only update if valid and not in manual map mode
+
+                if (gps.location.isValid() && gps.location.isUpdated() && !globalManualMapMode)
+                { // Only update if valid and not in manual map mode
+                    if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                    {
                         globalLatitude = gps.location.lat();
                         globalLongitude = gps.location.lng();
                         globalAltitude = gps.altitude.meters();
@@ -67,17 +70,20 @@ void gpsReadTask(void *pvParameters)
                         globalSpeed = gps.speed.kmph(); // Update global speed
                         globalTime = gps.time.value();
                         globalHDOP = gps.hdop.value();
-                        globalValid = true; // GPS fix is valid
+                        globalValid = true;   // GPS fix is valid
                         globalMapOffsetX = 0; // Reset manual offsets on valid fix
                         globalMapOffsetY = 0;
-                        ESP_LOGI("GPS", "Real GPS fix obtained: Lat %.5f, Lon %.5f", globalLatitude, globalLongitude);
+                        globalTestdata = false; // Clear test data flag
+
+                        ESP_LOGI("GPS", "Real GPS fix obtained: Lat %.8f, Lon %.8f", globalLatitude, globalLongitude);
+
+                        xSemaphoreGive(xGPSMutex);
+                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
                     }
-                    else
-                    {
-                        globalValid = false; // No valid GPS fix
-                    }
-                    xSemaphoreGive(xGPSMutex);
-                    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY); // Signal GUI task
+                }
+                else
+                {
+                    globalValid = false; // No valid GPS fix
                 }
             }
             else
@@ -95,6 +101,7 @@ void gpsReadTask(void *pvParameters)
                             int randomIndex = rand() % gpsTestData.size();
                             globalLatitude = gpsTestData[randomIndex].lat;
                             globalLongitude = gpsTestData[randomIndex].lon;
+                            globalTestdata = true;
                             ESP_LOGW("GPS", "Using test data: Lat %.5f, Lon %.5f (globalValid: %d)", globalLatitude, globalLongitude, globalValid);
                             lastTestDataUpdateTime = millis(); // Update the last update time
                             xSemaphoreGive(xGPSMutex);
@@ -106,5 +113,6 @@ void gpsReadTask(void *pvParameters)
         }
 
         vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
+        ESP_LOGI("GPS_TASK", "gpsReadTask ended iteration");
     }
 }

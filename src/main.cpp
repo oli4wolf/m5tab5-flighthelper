@@ -35,6 +35,7 @@ extern SemaphoreHandle_t xVariometerMutex;
 double globalLatitude = 46.947597;
 double globalLongitude = 7.440434;
 double globalAltitude = 542.5; // Initial altitude set to Bern, Switzerland
+bool globalTestdata = false; // Flag to indicate if test data is being used
 unsigned long globalSatellites;
 unsigned long globalHDOP;
 bool globalValid = false; // Indicates if a valid GPS fix is available
@@ -156,6 +157,7 @@ void setup()
       APP_CPU_NUM);     // Core where the task should run (APP_CPU_NUM or PRO_CPU_NUM)
 
   // Create and start the GPS reading task
+  ESP_LOGI("main.cpp", "Creating GPSReadTask");
   xTaskCreatePinnedToCore(
       gpsReadTask,   // Task function
       "GPSReadTask", // Name of task

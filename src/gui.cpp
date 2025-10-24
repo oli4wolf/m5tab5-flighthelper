@@ -22,6 +22,7 @@ extern SemaphoreHandle_t xGPSMutex;             // Declare extern here
 extern double globalLatitude;                   // Declare extern here
 extern double globalLongitude;                  // Declare extern here
 extern bool globalValid;                        // Declare extern here
+extern bool globalTestdata;                     // Declare extern here
 extern double globalSpeed;                      // Declare extern here
 extern double globalAltitude;                   // Declare extern here
 extern double globalDirection;                  // Declare extern here
@@ -153,7 +154,7 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
     {
       int tileToLoadX = currentTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
       int tileToLoadY = currentTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
-      sprintf(tilePaths[y][x], "/map/%d/%d/%d.jpeg", currentTileZ, tileToLoadX, tileToLoadY);
+      sprintf(tilePaths[y][x], "/maps/pixelkarte-farbe/%d/%d/%d.jpeg", currentTileZ, tileToLoadX, tileToLoadY);
       if (x == SCREEN_BUFFER_CENTER_OFFSET && y == SCREEN_BUFFER_CENTER_OFFSET) {
           strncpy(globalCurrentCenterTilePath, tilePaths[y][x], TILE_PATH_MAX_LENGTH - 1);
           globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
@@ -221,6 +222,7 @@ void drawImageMatrixTask(void *pvParameters)
   double currentLongitude = 0;
   double currentSpeed = 0;
   bool currentValid = false;
+  bool currentTestdata = false;
 
   // Store previous tile coordinates to detect changes
   int prevTileX = -1;
@@ -249,10 +251,11 @@ void drawImageMatrixTask(void *pvParameters)
       currentLongitude = globalLongitude;
       currentSpeed = globalSpeed;
       currentValid = globalValid;
+      currentTestdata = globalTestdata;
       xSemaphoreGive(xGPSMutex);
     }
 
-    if (!globalManualMapMode && currentValid && USE_TESTDATA) // Use Testdata if nothing else.
+    if (!globalManualMapMode && (currentValid || (USE_TESTDATA && currentTestdata))) // Use Testdata if nothing else.
     {
         // Calculate tile coordinates
         currentTileZ = globalTileZ; // Use global zoom level
