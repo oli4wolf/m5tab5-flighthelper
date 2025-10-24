@@ -57,7 +57,6 @@ void gpsReadTask(void *pvParameters)
             {
                 if (gps.location.isValid())
                 {
-                    ESP_LOGD("GPS", "GPS location is valid. globalManualMapMode: %d", globalManualMapMode);
                     if (!globalManualMapMode) // Check only for validity, not necessarily update
                     {
                         if (gps.location.isUpdated()) // Only update global variables if location is new
