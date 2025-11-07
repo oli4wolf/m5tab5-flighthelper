@@ -46,7 +46,7 @@ M5Canvas varioCanvas(&M5.Display);
 M5Canvas verticalSpeedCanvas(&M5.Display);
 M5Canvas hikeButtonCanvas(&M5.Display); // Declare M5Canvas for hike overlay button
 M5Canvas bikeButtonCanvas(&M5.Display); // Declare M5Canvas for bike overlay button
-M5Canvas dir_icon(&M5.Display); // Declare M5Canvas globally for direction icon
+M5Canvas dir_icon(&M5.Display);         // Declare M5Canvas globally for direction icon
 
 // Define globalCurrentTilePath
 char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH] = "";
@@ -148,7 +148,8 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
       int tileToLoadX = effectiveTileX - SCREEN_BUFFER_CENTER_OFFSET + x;
       int tileToLoadY = effectiveTileY - SCREEN_BUFFER_CENTER_OFFSET + y;
       sprintf(tilePaths[y][x], "/maps/pixelkarte-farbe/%d/%d/%d.jpeg", currentTileZ, tileToLoadX, tileToLoadY);
-      if (x == SCREEN_BUFFER_CENTER_OFFSET && y == SCREEN_BUFFER_CENTER_OFFSET) {
+      if (x == SCREEN_BUFFER_CENTER_OFFSET && y == SCREEN_BUFFER_CENTER_OFFSET)
+      {
           strncpy(globalCurrentCenterTilePath, tilePaths[y][x], TILE_PATH_MAX_LENGTH - 1);
           globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
       }
@@ -187,7 +188,7 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
   drawDirectionIcon(screenBufferCanvas, centerX, centerY, globalDirection);
   drawSoundButton(); // Sound button now drawn directly to M5.Display
   drawHikeOverlayButton();
-  drawBikeOverlayButton();
+  drawBikeButton();
 
   // Calculate offsets to center the screenBufferCanvas on the M5.Display.
   // The screenBufferCanvas is larger than the display, so negative offsets are expected.
@@ -197,7 +198,6 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
   screenBufferCanvas.pushSprite(offsetX, offsetY);
   ESP_LOGD("updateTiles", "Pushing screenBufferCanvas with calculated offsetX: %d, offsetY: %d", offsetX, offsetY);
 }
-
 
 void drawImageMatrixTask(void *pvParameters)
 {
@@ -221,17 +221,17 @@ void drawImageMatrixTask(void *pvParameters)
   tileCanvas.createSprite(TILE_SIZE, TILE_SIZE); // Initialize M5Canvas for individual tiles
   // Todo could not the complete screen size be used here?
   screenBufferCanvas.createSprite(SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE, SCREEN_BUFFER_TILE_DIMENSION * TILE_SIZE); // Initialize M5Canvas for full screen buffer
-  gpsCanvas.createSprite(SCREEN_WIDTH/2, 128);
-  hikeButtonCanvas.createSprite(SCREEN_WIDTH/4, 128);
-  bikeButtonCanvas.createSprite(SCREEN_WIDTH/4, 128);
-  varioCanvas.createSprite(SCREEN_WIDTH/2, 128);
-  verticalSpeedCanvas.createSprite(SCREEN_WIDTH/2, 128);
+  gpsCanvas.createSprite(SCREEN_WIDTH / 4, 128);
+  hikeButtonCanvas.createSprite(SCREEN_WIDTH / 4, 128);
+  bikeButtonCanvas.createSprite(SCREEN_WIDTH / 4, 128);
+  varioCanvas.createSprite(SCREEN_WIDTH / 2, 128);
+  verticalSpeedCanvas.createSprite(SCREEN_WIDTH / 2, 128);
   ESP_LOGI("drawImageMatrixTask", "Canvas initialized.");
 
   initDirectionIcon(); // Initialize the direction icon once
-  initSoundButton(); // Initialize the sound button once - moved to main.cpp
-  initHikeButton(); // Initialize the hike overlay button
-  initBikeOverlayButton(); // Initialize the bike overlay button
+  initSoundButton();   // Initialize the sound button once - moved to main.cpp
+  initHikeButton();    // Initialize the hike overlay button
+  initBikeButton();    // Initialize the bike overlay button
   ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
   // ESP_LOGI("drawImageMatrixTask", "Sound button initialized.");
 
@@ -312,7 +312,7 @@ void drawImageMatrixTask(void *pvParameters)
 // Implementations for text zone update functions
 void updateDisplayWithVarioTelemetry()
 {
-  //ESP_LOGD("updateDisplayWithVarioTelemetry", "Task started.");
+  // ESP_LOGD("updateDisplayWithVarioTelemetry", "Task started.");
   float currentPressure = 0;
   float currentTemperature = 0;
   float currentBaroAltitude = 0;
@@ -344,13 +344,18 @@ void updateDisplayWithVarioTelemetry()
   varioCanvas.pushSprite(0, 0);
 
   // implement vertical speed display
-  if(currentVerticalSpeed > 0.5) {
+  if (currentVerticalSpeed > 0.5)
+  {
     verticalSpeedCanvas.clear(TFT_GREEN);
       verticalSpeedCanvas.setTextColor(TFT_BLACK);
-  } else if (currentVerticalSpeed < -0.5) {
+  }
+  else if (currentVerticalSpeed < -0.5)
+  {
     verticalSpeedCanvas.clear(TFT_RED);
       verticalSpeedCanvas.setTextColor(TFT_WHITE);
-  } else {
+  }
+  else
+  {
     verticalSpeedCanvas.clear(TFT_BLACK);
       verticalSpeedCanvas.setTextColor(TFT_WHITE);
   }
@@ -376,7 +381,7 @@ void updateDisplayWithVarioTelemetry()
 // Implementations for text zone update functions
 void updateDisplayWithGPSTelemetry()
 {
-  //ESP_LOGD("updateDisplayWithGPSTelemetry", "Task started.");
+  // ESP_LOGD("updateDisplayWithGPSTelemetry", "Task started.");
   double currentLatitude = 0;
   double currentLongitude = 0;
   double currentSpeed = 0;
@@ -402,7 +407,9 @@ void updateDisplayWithGPSTelemetry()
  
     // Duplicate assignment, will be removed in fix
     ESP_LOGW("GPS", "No valid GPS fix.");
-  }else{
+  }
+  else
+  {
     gpsCanvas.clear(TFT_DARKGREEN);
     gpsCanvas.printf("Lat: %.6f\n", currentLatitude);
     gpsCanvas.printf("Lng: %.6f\n", currentLongitude);
@@ -441,19 +448,19 @@ void drawDirectionIcon(M5Canvas &canvas, int centerX, int centerY, double direct
                                 dir_icon_palette_id_trans);
 }
 
-// Sound button variables
+// Sound button variables buttom second/4 left
 static M5Canvas soundButtonCanvas(&M5.Display);
-static int soundButtonX;
-static int soundButtonY;
-static int soundButtonWidth;
-static int soundButtonHeight;
+int soundButtonX;
+int soundButtonY;
+int soundButtonWidth;
+int soundButtonHeight;
 
 void initSoundButton()
 {
-  soundButtonWidth = 80;                                     // Example width
-  soundButtonHeight = 40;                                    // Example height
-  soundButtonX = M5.Display.width() - soundButtonWidth - 10; // 10px from right edge
-  soundButtonY = 10;                                         // 10px from top edge
+  soundButtonWidth = SCREEN_WIDTH / 4;                                     // Example width
+  soundButtonHeight = gpsCanvas.height();                                    // Example height
+  soundButtonX = SCREEN_WIDTH / 4; // 10px from right edge
+  soundButtonY = M5.Display.height() - gpsCanvas.height();                                         // 10px from top edge
 
   soundButtonCanvas.createSprite(soundButtonWidth, soundButtonHeight);
   soundButtonCanvas.setFont(&fonts::Font2);
@@ -467,7 +474,7 @@ void drawSoundButton()
   soundButtonCanvas.clear(globalSoundEnabled ? TFT_DARKGREEN : TFT_DARKGREY);
   soundButtonCanvas.setTextColor(TFT_WHITE);
   soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum
-  soundButtonCanvas.drawString(globalSoundEnabled ? "Sound ON" : "Sound OFF", soundButtonWidth / 2, soundButtonHeight / 2);
+  soundButtonCanvas.printf("%s", globalSoundEnabled ? "Sound ON" : "Sound OFF");
   soundButtonCanvas.pushSprite(soundButtonX, soundButtonY); // Push directly to M5.Display
 
   screenBufferCanvas.pushSprite(soundButtonX, soundButtonY); // Also update screenBufferCanvas
@@ -484,22 +491,23 @@ void initHikeButton()
 
   hikeButtonCanvas.createSprite(hikeButtonWidth, hikeButtonHeight);
   hikeButtonCanvas.setFont(&fonts::Font2);
-  hikeButtonCanvas.setTextSize(1);
+  hikeButtonCanvas.setTextSize(6);
 }
 
 void drawHikeOverlayButton()
 {
   ESP_LOGE("HikeOverlayButton", "drawHikeOverlayButton() called.");
-  hikeButtonCanvas.clear(TFT_BLUE); // Example color
+  hikeButtonCanvas.clear(TFT_DARKCYAN); // Example color
   hikeButtonCanvas.setTextColor(TFT_WHITE);
-  hikeButtonCanvas.setTextDatum(CC_DATUM);
+  hikeButtonCanvas.setTextSize(6);
+
   hikeButtonCanvas.drawString("Hike", hikeButtonWidth / 2, hikeButtonHeight / 2);
   int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
   hikeButtonCanvas.pushSprite(SCREEN_WIDTH/2, gpsCanvasY);
 
 }
 
-void handleHikeOverlayButtonPress(int x, int y)
+void handleHikeButtonPress(int x, int y)
 {
   int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
   ESP_LOGE("HikeOverlayButton", "handleHikeOverlayButtonPress() called with x: %d, y: %d", x, y);
@@ -518,37 +526,37 @@ void handleHikeOverlayButtonPress(int x, int y)
 // Bike Overlay button variables
 static int bikeButtonWidth;
 static int bikeButtonHeight;
+static int bikeButtonX;
+static int bikeButtonY;
 
-void initBikeOverlayButton()
+void initBikeButton()
 {
-  
+  bikeButtonX = (SCREEN_WIDTH / 4) * 3; // 10px from right edge
+  bikeButtonY = M5.Display.height() - gpsCanvas.height(); // 10px from top edge
   bikeButtonWidth = SCREEN_WIDTH / 4;
   bikeButtonHeight = gpsCanvas.height();
 
   bikeButtonCanvas.createSprite(bikeButtonWidth, bikeButtonHeight);
   bikeButtonCanvas.setFont(&fonts::Font2);
-  bikeButtonCanvas.setTextSize(1);
+  bikeButtonCanvas.setTextSize(6);
 }
 
-void drawBikeOverlayButton()
+void drawBikeButton()
 {
   ESP_LOGE("BikeOverlayButton", "drawBikeOverlayButton() called.");
   bikeButtonCanvas.clear(TFT_ORANGE); // Example color
   bikeButtonCanvas.setTextColor(TFT_WHITE);
   bikeButtonCanvas.setTextDatum(CC_DATUM);
-  bikeButtonCanvas.drawString("Bike", bikeButtonWidth / 2, bikeButtonHeight / 2);
-  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
-  bikeButtonCanvas.pushSprite((SCREEN_WIDTH/4)*3, gpsCanvasY);
-
-  //screenBufferCanvas.pushSprite(bikeOverlayButtonX, bikeOverlayButtonY);
+  bikeButtonCanvas.printf("Bike");
+  bikeButtonCanvas.pushSprite(bikeButtonX, bikeButtonY);
 }
 
-void handleBikeOverlayButtonPress(int x, int y)
+void handleBikeButtonPress(int x, int y)
 {
   int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
   ESP_LOGE("BikeOverlayButton", "handleBikeOverlayButtonPress() called with x: %d, y: %d", x, y);
-  if (x >= (SCREEN_WIDTH/4)*3 && x <= ((SCREEN_WIDTH/4)*3 + bikeButtonWidth) &&
-      y >= gpsCanvasY && y <= (gpsCanvasY + bikeButtonHeight))
+  if (x >= bikeButtonX && x <= (bikeButtonX + bikeButtonWidth) &&
+      y >= bikeButtonY && y <= (bikeButtonY + bikeButtonHeight))
   {
     ESP_LOGE("BikeOverlayButton", "Bike Overlay button pressed.");
     // Add logic for bike overlay here
@@ -558,7 +566,6 @@ void handleBikeOverlayButtonPress(int x, int y)
     ESP_LOGE("BikeOverlayButton", "Press outside Bike Overlay button bounds.");
   }
 }
-
 void handleSoundButtonPress(int x, int y)
 {
   ESP_LOGE("SoundButton", "handleSoundButtonPress() called with x: %d, y: %d", x, y);

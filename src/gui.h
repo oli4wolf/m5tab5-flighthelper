@@ -41,16 +41,16 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
 void handleSoundButtonPress(int x, int y); // Declare handleSoundButtonPress
 void initHikeButton();
 void drawHikeOverlayButton();
-void handleHikeOverlayButtonPress(int x, int y);
-void initBikeOverlayButton();
-void drawBikeOverlayButton();
-void handleBikeOverlayButtonPress(int x, int y);
+void handleHikeButtonPress(int x, int y);
+void initBikeButton();
+void drawBikeButton();
+void handleBikeButtonPress(int x, int y);
 void initHikeButton();
 void drawHikeOverlayButton();
-void handleHikeOverlayButtonPress(int x, int y);
-void initBikeOverlayButton();
-void drawBikeOverlayButton();
-void handleBikeOverlayButtonPress(int x, int y);
+void handleHikeButtonPress(int x, int y);
+void initBikeButton();
+void drawBikeButton();
+void handleBikeButtonPress(int x, int y);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -155,8 +155,8 @@ void touchMonitorTask(void *pvParameters)
                 {
                     // Single Touch is either a drag or a button press.
                     handleSoundButtonPress(x1, y1);
-                    handleHikeOverlayButtonPress(x1, y1);
-                    handleBikeOverlayButtonPress(x1, y1);
+                    handleHikeButtonPress(x1, y1);
+                    handleBikeButtonPress(x1, y1);
                 }
             }
         }
