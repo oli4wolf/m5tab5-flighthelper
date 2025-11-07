@@ -474,22 +474,17 @@ void drawSoundButton()
 }
 
 // Hike Overlay button variables
-static int hikeButtonX;
-static int hikeButtonY;
 static int hikeButtonWidth;
 static int hikeButtonHeight;
 
 void initHikeButton()
 {
-  hikeButtonWidth = 80;
-  hikeButtonHeight = 40;
-  hikeButtonX = M5.Display.width() - hikeButtonWidth - 10; // 10px from right edge
-  hikeButtonY = soundButtonY + soundButtonHeight + 10; // Below sound button
+  hikeButtonWidth = SCREEN_WIDTH / 4;
+  hikeButtonHeight = gpsCanvas.height();
 
   hikeButtonCanvas.createSprite(hikeButtonWidth, hikeButtonHeight);
   hikeButtonCanvas.setFont(&fonts::Font2);
   hikeButtonCanvas.setTextSize(1);
-  ESP_LOGE("HikeOverlayButton", "initHikeOverlayButton() called. X: %d, Y: %d, W: %d, H: %d", hikeButtonX, hikeButtonY, hikeButtonWidth, hikeButtonHeight);
 }
 
 void drawHikeOverlayButton()
@@ -502,14 +497,14 @@ void drawHikeOverlayButton()
   int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
   hikeButtonCanvas.pushSprite(SCREEN_WIDTH/2, gpsCanvasY);
 
-  //screenBufferCanvas.pushSprite(hikeButtonX, hikeButtonY);
 }
 
 void handleHikeOverlayButtonPress(int x, int y)
 {
+  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
   ESP_LOGE("HikeOverlayButton", "handleHikeOverlayButtonPress() called with x: %d, y: %d", x, y);
-  if (x >= hikeButtonX && x <= (hikeButtonX + hikeButtonWidth) &&
-      y >= hikeButtonY && y <= (hikeButtonY + hikeButtonHeight))
+  if (x >= SCREEN_WIDTH/2 && x <= (SCREEN_WIDTH/2 + hikeButtonWidth) &&
+      y >= gpsCanvasY && y <= (gpsCanvasY + hikeButtonHeight))
   {
     ESP_LOGE("HikeOverlayButton", "Hike Overlay button pressed.");
     // Add logic for hike overlay here
@@ -521,22 +516,18 @@ void handleHikeOverlayButtonPress(int x, int y)
 }
 
 // Bike Overlay button variables
-static int bikeOverlayButtonX;
-static int bikeOverlayButtonY;
-static int bikeOverlayButtonWidth;
-static int bikeOverlayButtonHeight;
+static int bikeButtonWidth;
+static int bikeButtonHeight;
 
 void initBikeOverlayButton()
 {
-  bikeOverlayButtonWidth = 80;
-  bikeOverlayButtonHeight = 40;
-  bikeOverlayButtonX = M5.Display.width() - bikeOverlayButtonWidth - 10; // 10px from right edge
-  bikeOverlayButtonY = hikeButtonY + hikeButtonHeight + 10; // Below hike button
+  
+  bikeButtonWidth = SCREEN_WIDTH / 4;
+  bikeButtonHeight = gpsCanvas.height();
 
-  bikeButtonCanvas.createSprite(bikeOverlayButtonWidth, bikeOverlayButtonHeight);
+  bikeButtonCanvas.createSprite(bikeButtonWidth, bikeButtonHeight);
   bikeButtonCanvas.setFont(&fonts::Font2);
   bikeButtonCanvas.setTextSize(1);
-  ESP_LOGE("BikeOverlayButton", "initBikeOverlayButton() called. X: %d, Y: %d, W: %d, H: %d", bikeOverlayButtonX, bikeOverlayButtonY, bikeOverlayButtonWidth, bikeOverlayButtonHeight);
 }
 
 void drawBikeOverlayButton()
@@ -545,17 +536,19 @@ void drawBikeOverlayButton()
   bikeButtonCanvas.clear(TFT_ORANGE); // Example color
   bikeButtonCanvas.setTextColor(TFT_WHITE);
   bikeButtonCanvas.setTextDatum(CC_DATUM);
-  bikeButtonCanvas.drawString("Bike", bikeOverlayButtonWidth / 2, bikeOverlayButtonHeight / 2);
-  bikeButtonCanvas.pushSprite(bikeOverlayButtonX, bikeOverlayButtonY);
+  bikeButtonCanvas.drawString("Bike", bikeButtonWidth / 2, bikeButtonHeight / 2);
+  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
+  bikeButtonCanvas.pushSprite((SCREEN_WIDTH/4)*3, gpsCanvasY);
 
-  screenBufferCanvas.pushSprite(bikeOverlayButtonX, bikeOverlayButtonY);
+  //screenBufferCanvas.pushSprite(bikeOverlayButtonX, bikeOverlayButtonY);
 }
 
 void handleBikeOverlayButtonPress(int x, int y)
 {
+  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
   ESP_LOGE("BikeOverlayButton", "handleBikeOverlayButtonPress() called with x: %d, y: %d", x, y);
-  if (x >= bikeOverlayButtonX && x <= (bikeOverlayButtonX + bikeOverlayButtonWidth) &&
-      y >= bikeOverlayButtonY && y <= (bikeOverlayButtonY + bikeOverlayButtonHeight))
+  if (x >= (SCREEN_WIDTH/4)*3 && x <= ((SCREEN_WIDTH/4)*3 + bikeButtonWidth) &&
+      y >= gpsCanvasY && y <= (gpsCanvasY + bikeButtonHeight))
   {
     ESP_LOGE("BikeOverlayButton", "Bike Overlay button pressed.");
     // Add logic for bike overlay here
