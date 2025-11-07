@@ -464,20 +464,26 @@ void initSoundButton()
 
   soundButtonCanvas.createSprite(soundButtonWidth, soundButtonHeight);
   soundButtonCanvas.setFont(&fonts::Font2);
-  soundButtonCanvas.setTextSize(1);
+  soundButtonCanvas.setTextSize(3);
   ESP_LOGE("SoundButton", "initSoundButton() called. X: %d, Y: %d, W: %d, H: %d", soundButtonX, soundButtonY, soundButtonWidth, soundButtonHeight);
 }
 
 void drawSoundButton()
 { // Modified to not take canvas parameter
-  ESP_LOGE("SoundButton", "drawSoundButton() called. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
+  // ESP_LOGE("SoundButton", "drawSoundButton() called. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false"); // Removed logging
   soundButtonCanvas.clear(globalSoundEnabled ? TFT_DARKGREEN : TFT_DARKGREY);
   soundButtonCanvas.setTextColor(TFT_WHITE);
-  soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum
-  soundButtonCanvas.printf("%s", globalSoundEnabled ? "Sound ON" : "Sound OFF");
-  soundButtonCanvas.pushSprite(soundButtonX, soundButtonY); // Push directly to M5.Display
+  // soundButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum - not working as expected with printf
 
-  screenBufferCanvas.pushSprite(soundButtonX, soundButtonY); // Also update screenBufferCanvas
+  const char* text = globalSoundEnabled ? "Sound" : "Sound";
+  int16_t textWidth = soundButtonCanvas.textWidth(text);
+  int16_t textHeight = soundButtonCanvas.fontHeight();
+  int16_t x = (soundButtonCanvas.width() - textWidth) / 2;
+  int16_t y = (soundButtonCanvas.height() - textHeight) / 2;
+
+  soundButtonCanvas.setCursor(x, y);
+  soundButtonCanvas.printf(text);
+  soundButtonCanvas.pushSprite(soundButtonX, soundButtonY); // Push directly to M5.Display
 }
 
 // Hike Overlay button variables
@@ -491,20 +497,26 @@ void initHikeButton()
 
   hikeButtonCanvas.createSprite(hikeButtonWidth, hikeButtonHeight);
   hikeButtonCanvas.setFont(&fonts::Font2);
-  hikeButtonCanvas.setTextSize(6);
+  hikeButtonCanvas.setTextSize(3);
 }
 
 void drawHikeOverlayButton()
 {
-  ESP_LOGE("HikeOverlayButton", "drawHikeOverlayButton() called.");
-  hikeButtonCanvas.clear(TFT_DARKCYAN); // Example color
-  hikeButtonCanvas.setTextColor(TFT_WHITE);
-  hikeButtonCanvas.setTextSize(6);
+  hikeButtonCanvas.clear(TFT_ORANGE); // Example color
+  hikeButtonCanvas.setTextColor(TFT_BLACK);
+  hikeButtonCanvas.setTextSize(3);
+  // hikeButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum - not working as expected with printf
 
-  hikeButtonCanvas.drawString("Hike", hikeButtonWidth / 2, hikeButtonHeight / 2);
-  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
-  hikeButtonCanvas.pushSprite(SCREEN_WIDTH/2, gpsCanvasY);
+  // Manually calculate x and y to center the text
+  const char* text = "Hike";
+  int16_t textWidth = hikeButtonCanvas.textWidth(text);
+  int16_t textHeight = hikeButtonCanvas.fontHeight();
+  int16_t x = (hikeButtonCanvas.width() - textWidth) / 2;
+  int16_t y = (hikeButtonCanvas.height() - textHeight) / 2;
 
+  hikeButtonCanvas.setCursor(x, y);
+  hikeButtonCanvas.printf(text);
+  hikeButtonCanvas.pushSprite(SCREEN_WIDTH/2, (M5.Display.height()-128));
 }
 
 void handleHikeButtonPress(int x, int y)
@@ -538,16 +550,24 @@ void initBikeButton()
 
   bikeButtonCanvas.createSprite(bikeButtonWidth, bikeButtonHeight);
   bikeButtonCanvas.setFont(&fonts::Font2);
-  bikeButtonCanvas.setTextSize(6);
+  bikeButtonCanvas.setTextSize(3);
 }
 
 void drawBikeButton()
 {
-  ESP_LOGE("BikeOverlayButton", "drawBikeOverlayButton() called.");
-  bikeButtonCanvas.clear(TFT_ORANGE); // Example color
-  bikeButtonCanvas.setTextColor(TFT_WHITE);
-  bikeButtonCanvas.setTextDatum(CC_DATUM);
-  bikeButtonCanvas.printf("Bike");
+  // ESP_LOGE("BikeOverlayButton", "drawBikeOverlayButton() called."); // Removed logging
+  bikeButtonCanvas.clear(TFT_DARKCYAN); // Example color
+  bikeButtonCanvas.setTextColor(TFT_BLACK);
+  // bikeButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum - not working as expected with printf
+
+  const char* text = "Bike";
+  int16_t textWidth = bikeButtonCanvas.textWidth(text);
+  int16_t textHeight = bikeButtonCanvas.fontHeight();
+  int16_t x = (bikeButtonCanvas.width() - textWidth) / 2;
+  int16_t y = (bikeButtonCanvas.height() - textHeight) / 2;
+
+  bikeButtonCanvas.setCursor(x, y);
+  bikeButtonCanvas.printf(text);
   bikeButtonCanvas.pushSprite(bikeButtonX, bikeButtonY);
 }
 
