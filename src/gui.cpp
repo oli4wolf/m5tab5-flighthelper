@@ -23,6 +23,7 @@ extern double globalLatitude;                   // Declare extern here
 extern double globalLongitude;                  // Declare extern here
 extern bool globalValid;                        // Declare extern here
 extern bool globalTestdata;                     // Declare extern here
+extern bool globalManualMapMode;                // Declare extern here
 extern double globalSpeed;                      // Declare extern here
 extern double globalAltitude;                   // Declare extern here
 extern double globalDirection;                  // Declare extern here
@@ -400,21 +401,33 @@ void updateDisplayWithGPSTelemetry()
   gpsCanvas.setTextSize(2);
   gpsCanvas.setTextColor(TFT_WHITE);
   gpsCanvas.setCursor(0, 0);
-  if (!globalValid)
+  ESP_LOGD("updateDisplayWithGPSTelemetry", "GPS Valid: %s, ManualMapMode: %s", globalValid ? "true" : "false", globalManualMapMode ? "true" : "false");
+  if (globalManualMapMode && !globalValid)
   {
-    gpsCanvas.clear(TFT_DARKGREY);
+    gpsCanvas.clear(TFT_ORANGE);
+    gpsCanvas.printf("Manual Map Mode\n");
     gpsCanvas.printf("Waiting for GPS fix...\n");
- 
-    // Duplicate assignment, will be removed in fix
-    ESP_LOGW("GPS", "No valid GPS fix.");
   }
-  else
+  else if (globalValid && !globalManualMapMode)
   {
     gpsCanvas.clear(TFT_DARKGREEN);
     gpsCanvas.printf("Lat: %.6f\n", currentLatitude);
     gpsCanvas.printf("Lng: %.6f\n", currentLongitude);
     gpsCanvas.printf("Alt: %.1f m\n", currentAltitude);
     gpsCanvas.printf("Speed: %.1f km/h\n", currentSpeed);
+  }
+  else if (globalValid && globalManualMapMode)
+  {
+    gpsCanvas.clear(TFT_ORANGE);
+    gpsCanvas.printf("Manual Map Mode\n");
+    gpsCanvas.printf("Lat: %.5f\n", currentLatitude);
+    gpsCanvas.printf("Lng: %.5f\n", currentLongitude);
+    gpsCanvas.printf("Alt: %.1f m\n", currentAltitude);
+    gpsCanvas.printf("Speed: %.1f km/h\n", currentSpeed);
+  }else
+  {
+    gpsCanvas.clear(TFT_DARKGRAY);
+    gpsCanvas.printf("Waiting for GPS fix...\n");
   }
   // Adjusting the pushSprite coordinates to be visible on a typical M5Stack screen.
   // Assuming screen height is M5.Display.height().

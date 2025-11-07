@@ -8,4 +8,5 @@ It comes with a bigger Screen (5" at 1280x720). A Tile is 256x256. So 5x3 <vr>
 ![AdapterV1 Collage](./AdapterV1-COLLAGE.jpg)
 
 ## Next Step ##
-Reduce the canvas drawing on screen to 3x3.
+Every Touch enters the manual mode. Touch on map only on map relevant.
+Maybe show in the gpsCanvas what is actif.

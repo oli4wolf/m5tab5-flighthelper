@@ -82,6 +82,7 @@ void gpsReadTask(void *pvParameters)
                         // If location is valid but not updated, globalValid should remain true.
                         // No action needed here as globalValid is already true from previous valid fix.
                     } else {
+                        xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
                         ESP_LOGD("GPS", "GPS location valid but not updating global coords due to globalManualMapMode.");
                     }
                 }

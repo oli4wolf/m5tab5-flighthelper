@@ -146,6 +146,7 @@ void touchMonitorTask(void *pvParameters)
                 {
                     // Double-tap detected
                     globalManualMapMode = false; // Toggle manual map mode
+                    ESP_LOGI("touchMonitorTask", "Double-tap detected. Setting globalManualMapMode to FALSE.");
                     tapCount = 0; // Reset tap count after processing double-tap
                     singleTouchX = -1;
                     singleTouchY = -1;
@@ -173,6 +174,7 @@ void touchMonitorTask(void *pvParameters)
                 if (singleTouchX != -1 || singleTouchY != -1)
                 {
                     globalManualMapMode = true; // Enter manual map mode on single touch
+                    ESP_LOGI("touchMonitorTask", "Single-tap detected. Setting globalManualMapMode to TRUE.");
                     int deltaX = x1 - singleTouchX;
                     int deltaY = y1 - singleTouchY;
 
