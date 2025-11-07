@@ -39,6 +39,18 @@ void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direct
 void drawSoundButton(); // Modified to not take canvas parameter
 void updateTiles(double currentLatitude, double currentLongitude, int currentTileZ, int currentTileX, int currentTileY, double globalDirection); // New: Declare updateTiles function
 void handleSoundButtonPress(int x, int y); // Declare handleSoundButtonPress
+void initHikeButton();
+void drawHikeOverlayButton();
+void handleHikeOverlayButtonPress(int x, int y);
+void initBikeOverlayButton();
+void drawBikeOverlayButton();
+void handleBikeOverlayButtonPress(int x, int y);
+void initHikeButton();
+void drawHikeOverlayButton();
+void handleHikeOverlayButtonPress(int x, int y);
+void initBikeOverlayButton();
+void drawBikeOverlayButton();
+void handleBikeOverlayButtonPress(int x, int y);
 
 #ifdef __cplusplus
 } // extern "C"

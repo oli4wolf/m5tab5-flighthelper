@@ -154,8 +154,9 @@ void touchMonitorTask(void *pvParameters)
                 else
                 {
                     // Single Touch is either a drag or a button press.
-                    // Todo Button press detection could be added here.
                     handleSoundButtonPress(x1, y1);
+                    handleHikeOverlayButtonPress(x1, y1);
+                    handleBikeOverlayButtonPress(x1, y1);
                 }
             }
         }
