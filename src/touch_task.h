@@ -8,6 +8,8 @@ extern "C" {
 void initTouchMonitorTask();
 void touchMonitorTask(void *pvParameters);
 void handleSoundButtonPress(int x, int y);
+void handleHikeButtonPress(int x, int y);
+void handleBikeButtonPress(int x, int y);
 
 #ifdef __cplusplus
 }

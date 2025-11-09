@@ -8,6 +8,7 @@
 #include "gui.h"      // For xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY, and handleSoundButtonPress
 #include "gps_task.h" // For globalTileZ
 #include "tile_calculator.h" // For pixelToLatLng
+#include "gui.h" // For GUI_EVENT_HIKE_BUTTON_READY, GUI_EVENT_BIKE_BUTTON_READY, GUI_EVENT_SOUND_BUTTON_READY
 
 // Global variables declared in main.cpp
 extern int globalTileZ;
@@ -19,6 +20,22 @@ extern int globalManualZoomLevel;
 extern bool globalManualMapMode;
 extern double globalLatitude;
 extern double globalLongitude;
+extern bool globalHikeOverlayEnabled;
+extern bool globalBikeOverlayEnabled;
+extern bool globalSoundEnabled;
+
+// External global variables from gui.cpp for button dimensions and positions
+extern int hikeButtonWidth;
+extern int hikeButtonHeight;
+extern int bikeButtonX;
+extern int bikeButtonY;
+extern int bikeButtonWidth;
+extern int bikeButtonHeight;
+extern int soundButtonX;
+extern int soundButtonY;
+extern int soundButtonWidth;
+extern int soundButtonHeight;
+extern M5Canvas gpsCanvas; // For gpsCanvas.height()
 
 // Internal variables for touch gesture
 static int initialTouchDistance = 0;
@@ -177,7 +194,7 @@ void touchMonitorTask(void *pvParameters)
                     ESP_LOGI("touchMonitorTask", "Single-tap detected. Setting globalManualMapMode to TRUE.");
                     int deltaX = x1 - singleTouchX;
                     int deltaY = y1 - singleTouchY;
-
+ 
                     // Convert pixel offset to lat/lon change
                     double currentLat = globalLatitude;
                     double currentLng = globalLongitude;
@@ -200,7 +217,7 @@ void touchMonitorTask(void *pvParameters)
                     ESP_LOGD("touchMonitorTask", "New Lat/Lng after pan - Lat: %.6f, Lng: %.6f", newLat, newLng);
                     globalLatitude = newLat;
                     globalLongitude = newLng;
-
+ 
                     xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_MAP_DATA_READY);
                     ESP_LOGD("touchMonitorTask", "Map panned to new Lat: %.6f, Lng: %.6f", globalLatitude, globalLongitude);
                 }
@@ -223,4 +240,53 @@ void touchMonitorTask(void *pvParameters)
         }
         vTaskDelay(pdMS_TO_TICKS(TOUCH_TASK_DELAY_MS));
     }
+}
+
+void handleHikeButtonPress(int x, int y)
+{
+  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
+  ESP_LOGE("HikeOverlayButton", "handleHikeOverlayButtonPress() called with x: %d, y: %d", x, y);
+  if (x >= SCREEN_WIDTH/2 && x <= (SCREEN_WIDTH/2 + hikeButtonWidth) &&
+      y >= gpsCanvasY && y <= (gpsCanvasY + hikeButtonHeight))
+  {
+    ESP_LOGE("HikeOverlayButton", "Hike Overlay button pressed.");
+      globalHikeOverlayEnabled = !globalHikeOverlayEnabled;
+    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_HIKE_BUTTON_READY); // Signal GUI task
+  }
+  else
+  {
+    ESP_LOGE("HikeOverlayButton", "Press outside Hike Overlay button bounds.");
+  }
+}
+
+void handleBikeButtonPress(int x, int y)
+{
+  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
+  ESP_LOGE("BikeOverlayButton", "handleBikeOverlayButtonPress() called with x: %d, y: %d", x, y);
+  if (x >= bikeButtonX && x <= (bikeButtonX + bikeButtonWidth) &&
+      y >= bikeButtonY && y <= (bikeButtonY + bikeButtonHeight))
+  {
+    ESP_LOGE("BikeOverlayButton", "Bike Overlay button pressed.");
+    globalBikeOverlayEnabled = !globalBikeOverlayEnabled;
+    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_BIKE_BUTTON_READY); // Signal GUI task
+  }
+  else
+  {
+    ESP_LOGE("BikeOverlayButton", "Press outside Bike Overlay button bounds.");
+  }
+}
+void handleSoundButtonPress(int x, int y)
+{
+  ESP_LOGE("SoundButton", "handleSoundButtonPress() called with x: %d, y: %d", x, y);
+  if (x >= soundButtonX && x <= (soundButtonX + soundButtonWidth) &&
+      y >= soundButtonY && y <= (soundButtonY + soundButtonHeight))
+  {
+    globalSoundEnabled = !globalSoundEnabled;
+    ESP_LOGE("SoundButton", "Sound button pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
+    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_SOUND_BUTTON_READY); // Signal GUI task
+  }
+  else
+  {
+    ESP_LOGE("SoundButton", "Press outside sound button bounds.");
+  }
 }

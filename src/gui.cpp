@@ -413,8 +413,8 @@ void updateDisplayWithGPSTelemetry()
   else if (globalValid && !globalManualMapMode)
   {
     gpsCanvas.clear(TFT_DARKGREEN);
-    gpsCanvas.printf("Lat: %.6f\n", currentLatitude);
-    gpsCanvas.printf("Lng: %.6f\n", currentLongitude);
+    gpsCanvas.printf("Lat: %.5f\n", currentLatitude);
+    gpsCanvas.printf("Lng: %.5f\n", currentLongitude);
     gpsCanvas.printf("Alt: %.1f m\n", currentAltitude);
     gpsCanvas.printf("Speed: %.1f km/h\n", currentSpeed);
   }
@@ -464,7 +464,7 @@ void drawDirectionIcon(M5Canvas &canvas, int centerX, int centerY, double direct
 }
 
 // Sound button variables buttom second/4 left
-static M5Canvas soundButtonCanvas(&M5.Display);
+M5Canvas soundButtonCanvas(&M5.Display);
 int soundButtonX;
 int soundButtonY;
 int soundButtonWidth;
@@ -502,8 +502,8 @@ void drawSoundButton()
 }
 
 // Hike Overlay button variables
-static int hikeButtonWidth;
-static int hikeButtonHeight;
+int hikeButtonWidth;
+int hikeButtonHeight;
 
 void initHikeButton()
 {
@@ -537,10 +537,10 @@ void drawHikeOverlayButton()
 
 
 // Bike Overlay button variables
-static int bikeButtonWidth;
-static int bikeButtonHeight;
-static int bikeButtonX;
-static int bikeButtonY;
+int bikeButtonWidth;
+int bikeButtonHeight;
+int bikeButtonX;
+int bikeButtonY;
 
 void initBikeButton()
 {
@@ -572,51 +572,3 @@ void drawBikeButton()
   bikeButtonCanvas.pushSprite(bikeButtonX, bikeButtonY);
 }
 
-void handleHikeButtonPress(int x, int y)
-{
-  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
-  ESP_LOGE("HikeOverlayButton", "handleHikeOverlayButtonPress() called with x: %d, y: %d", x, y);
-  if (x >= SCREEN_WIDTH/2 && x <= (SCREEN_WIDTH/2 + hikeButtonWidth) &&
-      y >= gpsCanvasY && y <= (gpsCanvasY + hikeButtonHeight))
-  {
-    ESP_LOGE("HikeOverlayButton", "Hike Overlay button pressed.");
-      globalHikeOverlayEnabled = !globalHikeOverlayEnabled;
-    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_HIKE_BUTTON_READY); // Signal GUI task
-  }
-  else
-  {
-    ESP_LOGE("HikeOverlayButton", "Press outside Hike Overlay button bounds.");
-  }
-}
-
-void handleBikeButtonPress(int x, int y)
-{
-  int gpsCanvasY = M5.Display.height() - gpsCanvas.height();
-  ESP_LOGE("BikeOverlayButton", "handleBikeOverlayButtonPress() called with x: %d, y: %d", x, y);
-  if (x >= bikeButtonX && x <= (bikeButtonX + bikeButtonWidth) &&
-      y >= bikeButtonY && y <= (bikeButtonY + bikeButtonHeight))
-  {
-    ESP_LOGE("BikeOverlayButton", "Bike Overlay button pressed.");
-    globalBikeOverlayEnabled = !globalBikeOverlayEnabled;
-    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_BIKE_BUTTON_READY); // Signal GUI task
-  }
-  else
-  {
-    ESP_LOGE("BikeOverlayButton", "Press outside Bike Overlay button bounds.");
-  }
-}
-void handleSoundButtonPress(int x, int y)
-{
-  ESP_LOGE("SoundButton", "handleSoundButtonPress() called with x: %d, y: %d", x, y);
-  if (x >= soundButtonX && x <= (soundButtonX + soundButtonWidth) &&
-      y >= soundButtonY && y <= (soundButtonY + soundButtonHeight))
-  {
-    globalSoundEnabled = !globalSoundEnabled;
-    ESP_LOGE("SoundButton", "Sound button pressed. globalSoundEnabled: %s", globalSoundEnabled ? "true" : "false");
-    xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_SOUND_BUTTON_READY); // Signal GUI task
-  }
-  else
-  {
-    ESP_LOGE("SoundButton", "Press outside sound button bounds.");
-  }
-}

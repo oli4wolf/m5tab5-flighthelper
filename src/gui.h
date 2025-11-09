@@ -21,6 +21,19 @@ extern "C" {
 
 extern EventGroupHandle_t xGuiUpdateEventGroup;
 
+extern int soundButtonX;
+extern int soundButtonY;
+extern int soundButtonWidth;
+extern int soundButtonHeight;
+
+extern int hikeButtonWidth;
+extern int hikeButtonHeight;
+
+extern int bikeButtonX;
+extern int bikeButtonY;
+extern int bikeButtonWidth;
+extern int bikeButtonHeight;
+
 // Event bits for GUI updates
 #define GUI_EVENT_GPS_DATA_READY    (1 << 0)
 #define GUI_EVENT_VARIO_DATA_READY  (1 << 1)
@@ -40,19 +53,10 @@ bool drawJpgFromSD(const char* filePath);
 void drawDirectionIcon(M5Canvas& canvas, int centerX, int centerY, double direction);
 void drawSoundButton(); // Modified to not take canvas parameter
 void updateTiles(double currentLatitude, double currentLongitude, int currentTileZ, int currentTileX, int currentTileY, double globalDirection); // New: Declare updateTiles function
-void handleSoundButtonPress(int x, int y); // Declare handleSoundButtonPress
 void initHikeButton();
 void drawHikeOverlayButton();
-void handleHikeButtonPress(int x, int y);
 void initBikeButton();
 void drawBikeButton();
-void handleBikeButtonPress(int x, int y);
-void initHikeButton();
-void drawHikeOverlayButton();
-void handleHikeButtonPress(int x, int y);
-void initBikeButton();
-void drawBikeButton();
-void handleBikeButtonPress(int x, int y);
 
 #ifdef __cplusplus
 } // extern "C"
