@@ -17,6 +17,8 @@
 // global variables (define variables to be used throughout the program)
 EventGroupHandle_t xGuiUpdateEventGroup; // Declare the event group handle
 bool globalSoundEnabled = true; // Define global sound enable flag
+bool globalBikeOverlayEnabled = false; // New: Define global bike overlay enable flag
+bool globalHikeOverlayEnabled = false; // New: Define global hike overlay enable flag
 int globalManualZoomLevel = 0; // Define global manual zoom level, initialized to 0
 bool globalTwoFingerGestureActive = false; // New: Flag for active two-finger gesture
 bool globalManualMapMode = false; // New: Flag to indicate if map is in manual drag mode

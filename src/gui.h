@@ -27,6 +27,8 @@ extern EventGroupHandle_t xGuiUpdateEventGroup;
 #define GUI_EVENT_MAP_DATA_READY    (1 << 2)
 #define GUI_EVENT_SOUND_BUTTON_READY (1 << 3)
 #define GUI_EVENT_TOUCH_DATA_READY (1 << 4) // New: Event bit for touch data updates
+#define GUI_EVENT_HIKE_BUTTON_READY (1 << 5) // New: Event bit for hike button
+#define GUI_EVENT_BIKE_BUTTON_READY (1 << 6) // New: Event bit for bike button
 
 extern char globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH];
 extern char globalCurrentCenterTilePath[TILE_PATH_MAX_LENGTH];

@@ -11,6 +11,8 @@ const int SCREEN_HEIGHT = 1280; // Height of the M5Stack screen
 const bool SPEAKER_ENABLED = false; // Set to false to disable speaker functionality
 const bool USE_TESTDATA = true; // Set to true to use test GPS data when no valid GPS fix is available
 extern bool globalSoundEnabled; // Global variable to control sound output at runtime
+extern bool globalBikeOverlayEnabled; // New: Global variable to control bike overlay at runtime
+extern bool globalHikeOverlayEnabled; // New: Global variable to control hike overlay at runtime
 extern bool globalTwoFingerGestureActive; // New: Flag for active two-finger gesture
 extern int globalManualZoomLevel; // New: Manually set zoom level
 extern bool globalManualMapMode; // New: Flag to indicate if map is in manual drag mode
