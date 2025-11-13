@@ -81,40 +81,31 @@ void gpsReadTask(void *pvParameters)
                 globalValid = false; // No valid GPS fix
                 xSemaphoreGive(xGPSMutex);
             }
-            ESP_LOGD("GPS", "GPS location is NOT valid. globalValid set to false.");
+            ESP_LOGD("GPS", "GPS location is NOT valid. globalValid set to false and %s", globalManualMapMode ? "manual map mode is ON." : "manual map mode is OFF.");
+        }
+
+        // nothing to do if not a valid sentence
+        // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
+        static unsigned long lastTestDataUpdateTime = 0;
+        const unsigned long TESTDATA_UPDATE_INTERVAL_MS = 15000; // 15 seconds
+
+        if (USE_TESTDATA && !globalManualMapMode && !globalValid)
+        {
+            if ((millis() - lastTestDataUpdateTime) >= TESTDATA_UPDATE_INTERVAL_MS)
+            {
+                if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
+                {
+                    int randomIndex = rand() % gpsTestData.size();
+                    globalLatitude = gpsTestData[randomIndex].lat;
+                    globalLongitude = gpsTestData[randomIndex].lon;
+                    globalTestdata = true;
+                    ESP_LOGW("GPS", "Using test data: Lat %.5f, Lon %.5f (globalValid: %d)", globalLatitude, globalLongitude, globalValid);
+                    lastTestDataUpdateTime = millis(); // Update the last update time
+                    xSemaphoreGive(xGPSMutex);
+                }
+                xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
+            }
         }
         vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
     }
-    // nothing to do if not a valid sentence
-    // ESP_LOGD("GPS", "Failed to encode char: %c", gpsChar); // Too verbose, use only if needed
-    static unsigned long lastTestDataUpdateTime = 0;
-    const unsigned long TESTDATA_UPDATE_INTERVAL_MS = 15000; // 15 seconds
-
-    if (USE_TESTDATA && !globalManualMapMode && !globalValid)
-    {
-        if ((millis() - lastTestDataUpdateTime) >= TESTDATA_UPDATE_INTERVAL_MS)
-        {
-            if (xSemaphoreTake(xGPSMutex, portMAX_DELAY) == pdTRUE)
-            {
-                int randomIndex = rand() % gpsTestData.size();
-                globalLatitude = gpsTestData[randomIndex].lat;
-                globalLongitude = gpsTestData[randomIndex].lon;
-                globalTestdata = true;
-                ESP_LOGW("GPS", "Using test data: Lat %.5f, Lon %.5f (globalValid: %d)", globalLatitude, globalLongitude, globalValid);
-                lastTestDataUpdateTime = millis(); // Update the last update time
-                xSemaphoreGive(xGPSMutex);
-            }
-            xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_GPS_DATA_READY);
-        }
-    }
-    else if (USE_TESTDATA && globalManualMapMode)
-    {
-        ESP_LOGD("GPS", "Test data available but not updating global coords due to globalManualMapMode.");
-    }
-    else if (USE_TESTDATA && globalValid)
-    {
-        ESP_LOGD("GPS", "Test data available but not updating global coords because globalValid is true.");
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(GPS_TASK_DELAY_MS));
 }
