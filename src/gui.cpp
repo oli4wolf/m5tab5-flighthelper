@@ -81,6 +81,88 @@ void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *file
   globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0'; // Ensure null-termination
 }
 
+// Helper function to draw a single tile, handling cache and SD loading
+void drawHikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
+{
+  // Create a mutable copy of filePath to modify the extension
+  char modifiedFilePath[TILE_PATH_MAX_LENGTH];
+  strncpy(modifiedFilePath, filePath, TILE_PATH_MAX_LENGTH - 1);
+  modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
+
+  // Find the last occurrence of ".png" and replace with ".jpg"
+  char *jpegExtension = strstr(modifiedFilePath, ".jpeg");
+  if (jpegExtension != nullptr) {
+      // Replace .jpeg with .png
+      strncpy(jpegExtension, ".png", 4); // 4 for .png and null terminator
+      jpegExtension[4] = '\0';
+  }
+
+   // Find "pixelkarte-farbe" and replace with "hike"
+  char *pathSegment = strstr(modifiedFilePath, "pixelkarte-farbe");
+  if (pathSegment != nullptr) {
+      // Calculate the length of the part before "pixelkarte-farbe"
+      size_t prefixLen = pathSegment - modifiedFilePath;
+      char tempPath[TILE_PATH_MAX_LENGTH];
+      strncpy(tempPath, modifiedFilePath, prefixLen);
+      tempPath[prefixLen] = '\0';
+      strcat(tempPath, "hike");
+      strcat(tempPath, pathSegment + strlen("pixelkarte-farbe"));
+      strncpy(modifiedFilePath, tempPath, TILE_PATH_MAX_LENGTH - 1);
+      modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
+  }
+
+  File file = SD_MMC.open(modifiedFilePath); // Use modifiedFilePath
+  if (!file)
+  {
+    ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", modifiedFilePath); // Log modifiedFilePath
+    return;
+  }
+  canvas.drawPngFile(SD_MMC, modifiedFilePath, 0, 0);
+  file.close();
+  ESP_LOGI("drawHikeOverlayFromTile", "Loaded and drew Png from SD: %s", modifiedFilePath);
+}
+
+// Helper function to draw a single tile, handling cache and SD loading
+void drawBikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
+{
+  // Create a mutable copy of filePath to modify the extension
+  char modifiedFilePath[TILE_PATH_MAX_LENGTH];
+  strncpy(modifiedFilePath, filePath, TILE_PATH_MAX_LENGTH - 1);
+  modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
+
+  // Find the last occurrence of ".png" and replace with ".jpg"
+  char *jpegExtension = strstr(modifiedFilePath, ".jpeg");
+  if (jpegExtension != nullptr) {
+      // Replace .jpeg with .png
+      strncpy(jpegExtension, ".png", 4); // 4 for .png and null terminator
+      jpegExtension[4] = '\0';
+  }
+
+   // Find "pixelkarte-farbe" and replace with "bike"
+  char *pathSegment = strstr(modifiedFilePath, "pixelkarte-farbe");
+  if (pathSegment != nullptr) {
+      // Calculate the length of the part before "pixelkarte-farbe"
+      size_t prefixLen = pathSegment - modifiedFilePath;
+      char tempPath[TILE_PATH_MAX_LENGTH];
+      strncpy(tempPath, modifiedFilePath, prefixLen);
+      tempPath[prefixLen] = '\0';
+      strcat(tempPath, "bike");
+      strcat(tempPath, pathSegment + strlen("pixelkarte-farbe"));
+      strncpy(modifiedFilePath, tempPath, TILE_PATH_MAX_LENGTH - 1);
+      modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
+  }
+
+  File file = SD_MMC.open(modifiedFilePath); // Use modifiedFilePath
+  if (!file)
+  {
+    ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", modifiedFilePath); // Log modifiedFilePath
+    return;
+  }
+  canvas.drawPngFile(SD_MMC, modifiedFilePath, 0, 0);
+  file.close();
+  ESP_LOGI("drawBikeOverlayFromTile", "Loaded and drew Png from SD: %s", modifiedFilePath);
+}
+
 void initDirectionIcon()
 {
   /*
@@ -179,6 +261,16 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
       tileCanvas.clear(TFT_DARKCYAN); // Clear the individual tile canvas
       drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
                currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+      if(globalHikeOverlayEnabled){
+        ESP_LOGD("updateTiles", "Drawing Hike Overlay on tile at offsetX: %d, offsetY: %d, path: %s", xOffset, yOffset, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+        drawHikeOverlayFromTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
+                                currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+      }
+      if(globalBikeOverlayEnabled){
+        ESP_LOGD("updateTiles", "Drawing Bike Overlay on tile at offsetX: %d, offsetY: %d, path: %s", xOffset, yOffset, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+        drawBikeOverlayFromTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
+                                currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
+      }
       tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
     }
   }
@@ -583,4 +675,3 @@ void drawBikeButton()
   bikeButtonCanvas.printf(text);
   bikeButtonCanvas.pushSprite(bikeButtonX, bikeButtonY);
 }
-
