@@ -517,7 +517,14 @@ void initHikeButton()
 
 void drawHikeOverlayButton()
 {
-  hikeButtonCanvas.clear(TFT_ORANGE); // Example color
+  if(globalHikeOverlayEnabled)
+  {
+    hikeButtonCanvas.clear(TFT_ORANGE); // Example color when enabled
+  }
+  else
+  {
+    hikeButtonCanvas.clear(TFT_DARKGREY); // Example color when disabled
+  }
   hikeButtonCanvas.setTextColor(TFT_BLACK);
   hikeButtonCanvas.setTextSize(3);
   // hikeButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum - not working as expected with printf
@@ -556,10 +563,15 @@ void initBikeButton()
 
 void drawBikeButton()
 {
-  // ESP_LOGE("BikeOverlayButton", "drawBikeOverlayButton() called."); // Removed logging
-  bikeButtonCanvas.clear(TFT_DARKCYAN); // Example color
+  if(globalBikeOverlayEnabled)
+  {
+    bikeButtonCanvas.clear(TFT_DARKCYAN); // Example color when enabled
+  }
+  else
+  {
+    bikeButtonCanvas.clear(TFT_DARKGREY); // Example color when disabled
+  }
   bikeButtonCanvas.setTextColor(TFT_BLACK);
-  // bikeButtonCanvas.setTextDatum(CC_DATUM); // Center-center datum - not working as expected with printf
 
   const char* text = "Bike";
   int16_t textWidth = bikeButtonCanvas.textWidth(text);
