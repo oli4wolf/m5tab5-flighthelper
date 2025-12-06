@@ -14,6 +14,7 @@
 #include "tile_calculator.h"
 #include "gui.h"    // Include its own header
 #include "config.h" // Include configuration constants
+#include "tile_cache.h" // Include the new tile cache header
 
 // External global variables from main.cpp
 extern EventGroupHandle_t xGuiUpdateEventGroup; // Declare extern for the event group
@@ -41,7 +42,11 @@ extern SemaphoreHandle_t xPositionMutex;
 extern int globalTileX;
 extern int globalTileY;
 extern int globalTileZ;
-// Global LRU Cache instance (1MB)
+// Global TileCache instances
+TileCache tileCache(MAX_TILE_CACHE_SIZE); // For base map tiles
+TileCache hikeOverlayCache(MAX_TILE_CACHE_SIZE); // For hike overlays
+TileCache bikeOverlayCache(MAX_TILE_CACHE_SIZE); // For bike overlays
+
 M5Canvas tileCanvas(&M5.Display);         // Declare M5Canvas globally for individual tile drawing
 M5Canvas screenBufferCanvas(&M5.Display); // Declare M5Canvas globally for full screen buffer
 M5Canvas gpsCanvas(&M5.Display);
@@ -59,26 +64,33 @@ char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_
 // Helper function to draw a single tile, handling cache and SD loading
 void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
 {
-  // Check if the requested tile is already loaded
-  if (strcmp(globalLastDrawnTilePath, filePath) == 0)
-  {
-    ESP_LOGI("drawTile", "Tile already loaded: %s", filePath);
+  std::string key = filePath;
+  M5Canvas* cachedCanvas = tileCache.get(key);
+
+  if (cachedCanvas) {
+    cachedCanvas->pushSprite(&canvas, 0, 0); // Draw from cache
+    ESP_LOGI("drawTile", "Drew tile from cache: %s", filePath);
     return;
   }
 
+  // If not in cache, load from SD
   File file = SD_MMC.open(filePath);
   if (!file)
   {
     ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", filePath);
     return;
   }
-  canvas.drawJpgFile(SD_MMC, filePath, 0, 0);
+
+  // Create a new canvas for the tile and draw into it
+  M5Canvas* newCanvas = new M5Canvas(&M5.Display);
+  newCanvas->createSprite(TILE_SIZE, TILE_SIZE);
+  newCanvas->drawJpgFile(SD_MMC, filePath, 0, 0);
   file.close();
   ESP_LOGI("drawTile", "Loaded and drew Jpeg from SD: %s", filePath);
 
-  // Update the globalCurrentTilePath
-  strncpy(globalLastDrawnTilePath, filePath, TILE_PATH_MAX_LENGTH - 1);
-  globalLastDrawnTilePath[TILE_PATH_MAX_LENGTH - 1] = '\0'; // Ensure null-termination
+  // Add to cache
+  tileCache.put(key, newCanvas);
+  newCanvas->pushSprite(&canvas, 0, 0); // Draw to the provided canvas
 }
 
 // Helper function to draw a single tile, handling cache and SD loading
@@ -89,7 +101,7 @@ void drawHikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, c
   strncpy(modifiedFilePath, filePath, TILE_PATH_MAX_LENGTH - 1);
   modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
 
-  // Find the last occurrence of ".png" and replace with ".jpg"
+  // Find the last occurrence of ".jpeg" and replace with ".png"
   char *jpegExtension = strstr(modifiedFilePath, ".jpeg");
   if (jpegExtension != nullptr) {
       // Replace .jpeg with .png
@@ -111,15 +123,31 @@ void drawHikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, c
       modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
   }
 
+  std::string key = modifiedFilePath;
+  M5Canvas* cachedCanvas = hikeOverlayCache.get(key);
+
+  if (cachedCanvas) {
+    cachedCanvas->pushSprite(&canvas, 0, 0); // Draw from cache
+    ESP_LOGI("drawHikeOverlayFromTile", "Drew hike overlay from cache: %s", modifiedFilePath);
+    return;
+  }
+
   File file = SD_MMC.open(modifiedFilePath); // Use modifiedFilePath
   if (!file)
   {
     ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", modifiedFilePath); // Log modifiedFilePath
     return;
   }
-  canvas.drawPngFile(SD_MMC, modifiedFilePath, 0, 0);
+  
+  if (!canvas.drawPngFile(SD_MMC, modifiedFilePath, 0, 0)) {
+    ESP_LOGE("drawHikeOverlayFromTile", "Failed to draw PNG file: %s", modifiedFilePath);
+  }
   file.close();
   ESP_LOGI("drawHikeOverlayFromTile", "Loaded and drew Png from SD: %s", modifiedFilePath);
+
+  // No need to cache a separate canvas if drawing directly
+  // hikeOverlayCache.put(key, newCanvas);
+  // newCanvas->pushSprite(&canvas, 0, 0);
 }
 
 // Helper function to draw a single tile, handling cache and SD loading
@@ -130,7 +158,7 @@ void drawBikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, c
   strncpy(modifiedFilePath, filePath, TILE_PATH_MAX_LENGTH - 1);
   modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
 
-  // Find the last occurrence of ".png" and replace with ".jpg"
+  // Find the last occurrence of ".jpeg" and replace with ".png"
   char *jpegExtension = strstr(modifiedFilePath, ".jpeg");
   if (jpegExtension != nullptr) {
       // Replace .jpeg with .png
@@ -151,6 +179,16 @@ void drawBikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, c
       strncpy(modifiedFilePath, tempPath, TILE_PATH_MAX_LENGTH - 1);
       modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
   }
+
+  std::string key = modifiedFilePath;
+  M5Canvas* cachedCanvas = bikeOverlayCache.get(key);
+
+  if (cachedCanvas) {
+    cachedCanvas->pushSprite(&canvas, 0, 0); // Draw from cache
+    ESP_LOGI("drawBikeOverlayFromTile", "Drew bike overlay from cache: %s", modifiedFilePath);
+    return;
+  }
+
   bool exists = SD_MMC.exists(modifiedFilePath); // Try to open again for logging
   ESP_LOGI("drawBikeOverlayFromTile", "Bike overlay file does exist: %s", modifiedFilePath);
 
@@ -160,9 +198,16 @@ void drawBikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, c
     ESP_LOGE("SD_CARD", "Failed to open file for reading: %s", modifiedFilePath); // Log modifiedFilePath
     return;
   }
-  canvas.drawPngFile(SD_MMC, modifiedFilePath, 0, 0);
+  
+  if (!canvas.drawPngFile(SD_MMC, modifiedFilePath, 0, 0)) {
+    ESP_LOGE("drawBikeOverlayFromTile", "Failed to draw PNG file: %s", modifiedFilePath);
+  }
   file.close();
   ESP_LOGI("drawBikeOverlayFromTile", "Loaded and drew Png from SD: %s", modifiedFilePath);
+
+  // No need to cache a separate canvas if drawing directly
+  // bikeOverlayCache.put(key, newCanvas);
+  // newCanvas->pushSprite(&canvas, 0, 0);
 }
 
 // Helper function to draw a single tile, handling cache and SD loading
@@ -315,16 +360,15 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
     {
       int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
       int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-      tileCanvas.clear(TFT_DARKCYAN); // Clear the individual tile canvas
+      int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
+      int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
       drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
                currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
       if(globalHikeOverlayEnabled){
-        ESP_LOGD("updateTiles", "Drawing Hike Overlay on tile at offsetX: %d, offsetY: %d, path: %s", xOffset, yOffset, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
         drawHikeOverlayFromTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
                                 currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
       }
       if(globalBikeOverlayEnabled){
-        ESP_LOGD("updateTiles", "Drawing Bike Overlay on tile at offsetX: %d, offsetY: %d, path: %s", xOffset, yOffset, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
         drawBikeOverlayFromTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
                                 currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
       }
@@ -350,7 +394,64 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
   const int offsetY = (M5.Display.height() - screenBufferCanvas.height()) / 2;
   
   screenBufferCanvas.pushSprite(offsetX, offsetY);
-  ESP_LOGD("updateTiles", "Pushing screenBufferCanvas with calculated offsetX: %d, offsetY: %d", offsetX, offsetY);
+  xEventGroupSetBits(xGuiUpdateEventGroup, GUI_EVENT_PREFETCH_TILES); // Signal prefetch task
+}
+
+void prefetchTilesTask(void *pvParameters) {
+    ESP_LOGI("prefetchTilesTask", "Task started.");
+    while (true) {
+        EventBits_t uxBits = xEventGroupWaitBits(
+            xGuiUpdateEventGroup,
+            GUI_EVENT_PREFETCH_TILES,
+            pdTRUE,           // Clear bits on exit
+            pdFALSE,          // Don't wait for all bits
+            portMAX_DELAY     // Wait indefinitely
+        );
+
+        if ((uxBits & GUI_EVENT_PREFETCH_TILES) != 0) {
+            ESP_LOGI("prefetchTilesTask", "Prefetch event received.");
+            // Get current tile coordinates (assuming globalTileX, globalTileY, globalTileZ are updated by main GUI task)
+            int currentTileX, currentTileY, currentTileZ;
+            if (xSemaphoreTake(xPositionMutex, portMAX_DELAY) == pdTRUE) {
+                currentTileX = globalTileX;
+                currentTileY = globalTileY;
+                currentTileZ = globalTileZ;
+                xSemaphoreGive(xPositionMutex);
+            } else {
+                continue; // Skip prefetch if mutex can't be taken
+            }
+
+            // Define a prefetch radius (e.g., 2 tiles around the current center)
+            const int prefetchRadius = 2;
+
+            for (int yOffset = -prefetchRadius; yOffset <= prefetchRadius; ++yOffset) {
+                for (int xOffset = -prefetchRadius; xOffset <= prefetchRadius; ++xOffset) {
+                    int tileToPrefetchX = currentTileX + xOffset;
+                    int tileToPrefetchY = currentTileY + yOffset;
+
+                    char filePath[TILE_PATH_MAX_LENGTH];
+                    sprintf(filePath, "/maps/pixelkarte-farbe/%d/%d/%d.jpeg", currentTileZ, tileToPrefetchX, tileToPrefetchY);
+                    std::string key = filePath;
+
+                    // Check if already in cache
+                    if (tileCache.get(key) == nullptr) {
+                        // Not in cache, attempt to load and add
+                        File file = SD_MMC.open(filePath);
+                        if (file) {
+                            M5Canvas* newCanvas = new M5Canvas(&M5.Display);
+                            newCanvas->createSprite(TILE_SIZE, TILE_SIZE);
+                            newCanvas->drawJpgFile(SD_MMC, filePath, 0, 0);
+                            file.close();
+                            tileCache.put(key, newCanvas);
+                            ESP_LOGI("prefetchTilesTask", "Prefetched tile: %s", filePath);
+                        } else {
+                            ESP_LOGD("prefetchTilesTask", "Failed to open file for prefetch: %s", filePath);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void drawImageMatrixTask(void *pvParameters)
@@ -388,6 +489,17 @@ void drawImageMatrixTask(void *pvParameters)
   initBikeButton();    // Initialize the bike overlay button
   ESP_LOGI("drawImageMatrixTask", "Direction icon initialized.");
   // ESP_LOGI("drawImageMatrixTask", "Sound button initialized.");
+
+  // Create the prefetch task
+  xTaskCreatePinnedToCore(
+      prefetchTilesTask,
+      "PrefetchTiles",
+      4096, // Stack size
+      NULL,
+      1, // Priority (lower than GUI task)
+      NULL,
+      0 // Run on APP_CPU_NUM
+  );
 
   while (true)
   {
