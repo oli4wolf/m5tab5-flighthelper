@@ -151,6 +151,8 @@ void drawBikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, c
       strncpy(modifiedFilePath, tempPath, TILE_PATH_MAX_LENGTH - 1);
       modifiedFilePath[TILE_PATH_MAX_LENGTH - 1] = '\0';
   }
+  bool exists = SD_MMC.exists(modifiedFilePath); // Try to open again for logging
+  ESP_LOGI("drawBikeOverlayFromTile", "Bike overlay file does exist: %s", modifiedFilePath);
 
   File file = SD_MMC.open(modifiedFilePath); // Use modifiedFilePath
   if (!file)
@@ -161,6 +163,61 @@ void drawBikeOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, c
   canvas.drawPngFile(SD_MMC, modifiedFilePath, 0, 0);
   file.close();
   ESP_LOGI("drawBikeOverlayFromTile", "Loaded and drew Png from SD: %s", modifiedFilePath);
+}
+
+// Helper function to draw a single tile, handling cache and SD loading
+void drawThermalOverlayFromTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
+{
+  // Create filepath for thermal data which is a csv file
+  char finalName[TILE_PATH_MAX_LENGTH];
+  snprintf(finalName, TILE_PATH_MAX_LENGTH, "/maps/thermals/%d/%d/%d.dat", zoom, tileX, tileY);
+  
+  File file = SD_MMC.open(finalName); // Use finalName
+  if (!file)
+  {
+    bool exists = SD_MMC.exists(finalName); // Try to open again for logging
+    ESP_LOGE("SD_CARD", "Failed to open file for reading: %s, exists: %d, filepath: %s", finalName, exists, filePath); // Log finalName 
+    return;
+  }else{
+    ESP_LOGI("drawThermalOverlayFromTile", "Opened thermal data file: %s", finalName); 
+  }
+  // each line contains "height, percentage, name, point x, point y" example 982,72,Thermal,151,231
+  // we will draw a circle at point x,y with color based on percentage
+  while (file.available())
+  {
+    String line = file.readStringUntil('\n');
+    line.trim();
+    if (line.length() == 0) continue;
+
+    int firstComma = line.indexOf(',');
+    int secondComma = line.indexOf(',', firstComma + 1);
+    int thirdComma = line.indexOf(',', secondComma + 1);
+    int fourthComma = line.indexOf(',', thirdComma + 1);
+
+    if (firstComma == -1 || secondComma == -1 || thirdComma == -1 || fourthComma == -1) continue;
+
+    int height = line.substring(0, firstComma).toInt();
+    int percentage = line.substring(firstComma + 1, secondComma).toInt();
+    // String name = line.substring(secondComma + 1, thirdComma); // not used
+    int pointX = line.substring(thirdComma + 1, fourthComma).toInt();
+    int pointY = line.substring(fourthComma + 1).toInt();
+
+    // Determine color based on percentage
+    uint16_t color;
+    if (percentage >= 75)
+      color = TFT_GOLD;
+    else if (percentage >= 50)
+      color = TFT_ORANGE;
+    else if (percentage >= 25)
+      color = TFT_YELLOW;
+    else
+      color = TFT_GREEN;
+
+    // Draw circle on canvas
+    canvas.fillCircle(pointX, pointY, 5, color);
+  }
+  file.close();
+  ESP_LOGI("drawThermalOverlayFromTile", "Loaded and drew Thermal overlay from SD: %s", finalName);
 }
 
 void initDirectionIcon()
@@ -271,6 +328,8 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
         drawBikeOverlayFromTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
                                 currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
       }
+      drawThermalOverlayFromTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
+                                 currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
       tileCanvas.pushSprite(&screenBufferCanvas, currentDrawX, currentDrawY); // Draw tile to screen buffer
     }
   }
