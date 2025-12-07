@@ -64,7 +64,9 @@ char tilePaths[SCREEN_BUFFER_TILE_DIMENSION][SCREEN_BUFFER_TILE_DIMENSION][TILE_
 // Helper function to draw a single tile, handling cache and SD loading
 void drawTile(M5Canvas &canvas, int tileX, int tileY, int zoom, const char *filePath)
 {
-  std::string key = filePath;
+  char keyPath[32];
+  sprintf(keyPath, "%d,%d,%d", zoom, tileX, tileY);
+  std::string key = keyPath;
   M5Canvas* cachedCanvas = tileCache.get(key);
 
   if (cachedCanvas) {
@@ -360,8 +362,6 @@ void updateTiles(double currentLatitude, double currentLongitude, int currentTil
     {
       int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
       int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
-      int currentDrawX = drawOriginX + (xOffset * TILE_SIZE);
-      int currentDrawY = drawOriginY + (yOffset * TILE_SIZE);
       drawTile(tileCanvas, conceptualGridStartX + xOffset, conceptualGridStartY + yOffset,
                currentTileZ, tilePaths[yOffset + SCREEN_BUFFER_CENTER_OFFSET][xOffset + SCREEN_BUFFER_CENTER_OFFSET]);
       if(globalHikeOverlayEnabled){
@@ -430,8 +430,10 @@ void prefetchTilesTask(void *pvParameters) {
                     int tileToPrefetchY = currentTileY + yOffset;
 
                     char filePath[TILE_PATH_MAX_LENGTH];
+                    char keyPath[32];
                     sprintf(filePath, "/maps/pixelkarte-farbe/%d/%d/%d.jpeg", currentTileZ, tileToPrefetchX, tileToPrefetchY);
-                    std::string key = filePath;
+                    sprintf(keyPath, "%d,%d,%d", currentTileZ, tileToPrefetchX, tileToPrefetchY);
+                    std::string key = keyPath;
 
                     // Check if already in cache
                     if (tileCache.get(key) == nullptr) {
